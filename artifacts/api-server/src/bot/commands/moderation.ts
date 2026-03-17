@@ -20,7 +20,8 @@ export const kickCommand = {
     .addUserOption((o) => o.setName("membre").setDescription("Le membre à exclure").setRequired(true))
     .addStringOption((o) => o.setName("raison").setDescription("Raison de l'exclusion").setRequired(false)),
   async execute(interaction: ChatInputCommandInteraction) {
-    const member = interaction.options.getMember("membre") as GuildMember;
+    const member = interaction.options.getMember("membre") as GuildMember | null;
+    if (!member) return interaction.reply({ content: "❌ Membre introuvable.", ephemeral: true });
     const reason = interaction.options.getString("raison") ?? "Aucune raison fournie";
     try {
       await member.kick(reason);
@@ -46,7 +47,8 @@ export const banCommand = {
     .addUserOption((o) => o.setName("membre").setDescription("Le membre à bannir").setRequired(true))
     .addStringOption((o) => o.setName("raison").setDescription("Raison du ban").setRequired(false)),
   async execute(interaction: ChatInputCommandInteraction) {
-    const member = interaction.options.getMember("membre") as GuildMember;
+    const member = interaction.options.getMember("membre") as GuildMember | null;
+    if (!member) return interaction.reply({ content: "❌ Membre introuvable.", ephemeral: true });
     const reason = interaction.options.getString("raison") ?? "Aucune raison fournie";
     try {
       await member.ban({ reason });
@@ -98,7 +100,8 @@ export const muteCommand = {
     .addIntegerOption((o) => o.setName("minutes").setDescription("Durée en minutes").setRequired(false))
     .addStringOption((o) => o.setName("raison").setDescription("Raison").setRequired(false)),
   async execute(interaction: ChatInputCommandInteraction) {
-    const member = interaction.options.getMember("membre") as GuildMember;
+    const member = interaction.options.getMember("membre") as GuildMember | null;
+    if (!member) return interaction.reply({ content: "❌ Membre introuvable.", ephemeral: true });
     const minutes = interaction.options.getInteger("minutes") ?? 10;
     const reason = interaction.options.getString("raison") ?? "Aucune raison";
     try {
@@ -124,7 +127,8 @@ export const unmuteCommand = {
     .setDefaultMemberPermissions(adminPerm)
     .addUserOption((o) => o.setName("membre").setDescription("Le membre").setRequired(true)),
   async execute(interaction: ChatInputCommandInteraction) {
-    const member = interaction.options.getMember("membre") as GuildMember;
+    const member = interaction.options.getMember("membre") as GuildMember | null;
+    if (!member) return interaction.reply({ content: "❌ Membre introuvable.", ephemeral: true });
     try {
       await member.timeout(null);
       const embed = new EmbedBuilder()
@@ -167,7 +171,8 @@ export const warnCommand = {
     .addUserOption((o) => o.setName("membre").setDescription("Le membre à avertir").setRequired(true))
     .addStringOption((o) => o.setName("raison").setDescription("Raison").setRequired(false)),
   async execute(interaction: ChatInputCommandInteraction) {
-    const member = interaction.options.getMember("membre") as GuildMember;
+    const member = interaction.options.getMember("membre") as GuildMember | null;
+    if (!member) return interaction.reply({ content: "❌ Membre introuvable.", ephemeral: true });
     const reason = interaction.options.getString("raison") ?? "Aucune raison";
     const guildId = interaction.guildId!;
 
@@ -212,7 +217,8 @@ export const warnsCommand = {
     .setDefaultMemberPermissions(adminPerm)
     .addUserOption((o) => o.setName("membre").setDescription("Le membre").setRequired(true)),
   async execute(interaction: ChatInputCommandInteraction) {
-    const member = interaction.options.getMember("membre") as GuildMember;
+    const member = interaction.options.getMember("membre") as GuildMember | null;
+    if (!member) return interaction.reply({ content: "❌ Membre introuvable.", ephemeral: true });
     const guildId = interaction.guildId!;
 
     const memberWarns = await db.select().from(warnsTable)
@@ -247,7 +253,8 @@ export const unwarnCommand = {
     .addUserOption((o) => o.setName("membre").setDescription("Le membre").setRequired(true))
     .addIntegerOption((o) => o.setName("numero").setDescription("Numéro du warn à retirer").setRequired(true)),
   async execute(interaction: ChatInputCommandInteraction) {
-    const member = interaction.options.getMember("membre") as GuildMember;
+    const member = interaction.options.getMember("membre") as GuildMember | null;
+    if (!member) return interaction.reply({ content: "❌ Membre introuvable.", ephemeral: true });
     const numero = interaction.options.getInteger("numero", true);
     const guildId = interaction.guildId!;
 
