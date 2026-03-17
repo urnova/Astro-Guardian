@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "ASTRAL-BOT Panel"
+title = "Astral Panel"
 version = "1.0.0"
 id = "artifacts/astral-panel"
 router = "path"
