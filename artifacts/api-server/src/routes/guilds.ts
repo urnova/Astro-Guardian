@@ -103,6 +103,58 @@ router.get("/:guildId/warns", async (req, res) => {
   }
 });
 
+router.post("/:guildId/warns", async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const { userId, reason, moderatorId, moderatorName } = req.body;
+
+    const client = getBotClient();
+    const guild = client?.guilds.cache.get(guildId);
+    let username = userId;
+    try {
+      const member = await guild?.members.fetch(userId);
+      if (member) username = member.user.username;
+    } catch {}
+
+    const [warn] = await db.insert(warnsTable).values({ guildId, userId, username, reason, moderatorId: moderatorId || 'panel', moderatorName: moderatorName || 'Panel' }).returning();
+
+    const allWarns = await db.select().from(warnsTable).where(and(eq(warnsTable.guildId, guildId), eq(warnsTable.userId, userId)));
+    if (allWarns.length >= 3 && guild) {
+      try { await guild.members.ban(userId, { reason: '3 avertissements atteints' }); } catch {}
+    }
+
+    res.status(201).json(warn);
+  } catch {
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+router.delete("/:guildId/warns/:warnId", async (req, res) => {
+  try {
+    await db.delete(warnsTable).where(eq(warnsTable.id, parseInt(req.params.warnId)));
+    res.json({ success: true, message: "Avertissement supprimé" });
+  } catch {
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+router.get("/:guildId/members", async (req, res) => {
+  try {
+    const client = getBotClient();
+    if (!client) return res.status(503).json({ error: "Bot non connecté" });
+    const guild = client.guilds.cache.get(req.params.guildId);
+    if (!guild) return res.status(404).json({ error: "Serveur introuvable" });
+    await guild.members.fetch();
+    const members = guild.members.cache
+      .filter(m => !m.user.bot)
+      .sort((a, b) => a.user.username.localeCompare(b.user.username))
+      .map(m => ({ id: m.id, username: m.user.username, displayName: m.displayName, avatar: m.user.displayAvatarURL() }));
+    res.json(members);
+  } catch {
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
 router.get("/:guildId/banned-words", async (req, res) => {
   try {
     const words = await db
@@ -415,6 +467,175 @@ router.post("/:guildId/actions/say", async (req, res) => {
     res.json({ success: true, message: "Message envoyé" });
   } catch {
     res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+router.post("/:guildId/actions/kick", async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const { userId, reason } = req.body;
+    const client = getBotClient();
+    if (!client) return res.status(503).json({ error: "Bot non connecté" });
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild) return res.status(404).json({ error: "Serveur introuvable" });
+    const member = await guild.members.fetch(userId).catch(() => null);
+    if (!member) return res.status(404).json({ error: "Membre introuvable" });
+    await member.kick(reason ?? "Expulsion via panel");
+    res.json({ success: true, message: `${member.user.username} exclu du serveur` });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message ?? "Erreur serveur" });
+  }
+});
+
+router.post("/:guildId/actions/ban", async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const { userId, reason } = req.body;
+    const client = getBotClient();
+    if (!client) return res.status(503).json({ error: "Bot non connecté" });
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild) return res.status(404).json({ error: "Serveur introuvable" });
+    await guild.members.ban(userId, { reason: reason ?? "Ban via panel" });
+    res.json({ success: true, message: `Utilisateur ${userId} banni` });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message ?? "Erreur serveur" });
+  }
+});
+
+router.post("/:guildId/actions/unban", async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const { userId, reason } = req.body;
+    const client = getBotClient();
+    if (!client) return res.status(503).json({ error: "Bot non connecté" });
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild) return res.status(404).json({ error: "Serveur introuvable" });
+    await guild.members.unban(userId, reason ?? "Déban via panel");
+    res.json({ success: true, message: `Utilisateur ${userId} débanni` });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message ?? "Introuvable dans les bans ou erreur" });
+  }
+});
+
+router.post("/:guildId/actions/mute", async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const { userId, minutes, reason } = req.body;
+    const client = getBotClient();
+    if (!client) return res.status(503).json({ error: "Bot non connecté" });
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild) return res.status(404).json({ error: "Serveur introuvable" });
+    const member = await guild.members.fetch(userId).catch(() => null);
+    if (!member) return res.status(404).json({ error: "Membre introuvable" });
+    const duration = Math.min(parseInt(minutes) || 10, 40320);
+    await member.timeout(duration * 60 * 1000, reason ?? "Timeout via panel");
+    res.json({ success: true, message: `${member.user.username} mis en timeout pour ${duration} minute(s)` });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message ?? "Erreur serveur" });
+  }
+});
+
+router.post("/:guildId/actions/unmute", async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const { userId } = req.body;
+    const client = getBotClient();
+    if (!client) return res.status(503).json({ error: "Bot non connecté" });
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild) return res.status(404).json({ error: "Serveur introuvable" });
+    const member = await guild.members.fetch(userId).catch(() => null);
+    if (!member) return res.status(404).json({ error: "Membre introuvable" });
+    await member.timeout(null);
+    res.json({ success: true, message: `${member.user.username} - timeout retiré` });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message ?? "Erreur serveur" });
+  }
+});
+
+router.post("/:guildId/actions/clear", async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const { channelId, amount } = req.body;
+    const client = getBotClient();
+    if (!client) return res.status(503).json({ error: "Bot non connecté" });
+    const guild = client.guilds.cache.get(guildId);
+    const channel = guild?.channels.cache.get(channelId) as TextChannel | undefined;
+    if (!channel) return res.status(404).json({ error: "Canal introuvable" });
+    const count = Math.min(parseInt(amount) || 10, 100);
+    const deleted = await channel.bulkDelete(count, true);
+    res.json({ success: true, message: `${deleted.size} message(s) supprimé(s)` });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message ?? "Erreur serveur" });
+  }
+});
+
+router.post("/:guildId/actions/massban", async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const { userIds, reason } = req.body;
+    const client = getBotClient();
+    if (!client) return res.status(503).json({ error: "Bot non connecté" });
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild) return res.status(404).json({ error: "Serveur introuvable" });
+    const ids: string[] = Array.isArray(userIds) ? userIds : String(userIds).split(/[\s,]+/).filter(Boolean);
+    let count = 0;
+    for (const id of ids) {
+      try { await guild.members.ban(id, { reason: reason ?? "Ban de masse via panel" }); count++; } catch {}
+    }
+    res.json({ success: true, message: `${count} utilisateur(s) banni(s)` });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message ?? "Erreur serveur" });
+  }
+});
+
+router.post("/:guildId/actions/nuke", async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const { channelId } = req.body;
+    const client = getBotClient();
+    if (!client) return res.status(503).json({ error: "Bot non connecté" });
+    const guild = client.guilds.cache.get(guildId);
+    const channel = guild?.channels.cache.get(channelId) as TextChannel | undefined;
+    if (!channel) return res.status(404).json({ error: "Canal introuvable" });
+    const channelName = channel.name;
+    const position = channel.position;
+    const parent = channel.parent;
+    await channel.delete();
+    const newChannel = await guild!.channels.create({ name: channelName, position, parent, type: 0 }) as TextChannel;
+    const embed = new EmbedBuilder()
+      .setTitle("💥 CANAL NUCLÉARISÉ")
+      .setDescription(`\`\`\`diff\n+ Canal #${channelName} recréé et purifié\n+ Historique supprimé\n\`\`\``)
+      .setColor(0xff4500)
+      .setFooter({ text: "💥 SYSTÈME ASTRAL | NUKE via Panel" })
+      .setTimestamp();
+    await newChannel.send({ embeds: [embed] });
+    res.json({ success: true, message: `Canal #${channelName} nucléarisé et recréé` });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message ?? "Erreur serveur" });
+  }
+});
+
+router.post("/:guildId/actions/dm", async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const { userId, message } = req.body;
+    const client = getBotClient();
+    if (!client) return res.status(503).json({ error: "Bot non connecté" });
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild) return res.status(404).json({ error: "Serveur introuvable" });
+    const member = await guild.members.fetch(userId).catch(() => null);
+    if (!member) return res.status(404).json({ error: "Membre introuvable" });
+    const embed = new EmbedBuilder()
+      .setTitle("📨 Message du serveur")
+      .setDescription(message)
+      .setColor(0x0099ff)
+      .setAuthor({ name: guild.name, iconURL: guild.iconURL() ?? undefined })
+      .setFooter({ text: `Message officiel de ${guild.name}` })
+      .setTimestamp();
+    await member.send({ embeds: [embed] });
+    res.json({ success: true, message: `Message privé envoyé à ${member.user.username}` });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message ?? "MP impossible (fermés ou bloqué)" });
   }
 });
 

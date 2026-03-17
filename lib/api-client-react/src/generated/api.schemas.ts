@@ -203,6 +203,65 @@ export interface LogEntry {
   createdAt: string;
 }
 
+export interface GuildMember {
+  id: string;
+  username: string;
+  displayName: string;
+  avatar?: string | null;
+}
+
+export interface AddWarnBody {
+  userId: string;
+  reason: string;
+  moderatorId?: string | null;
+  moderatorName?: string | null;
+}
+
+export interface KickBody {
+  userId: string;
+  reason?: string | null;
+}
+
+export interface BanBody {
+  userId: string;
+  reason?: string | null;
+}
+
+export interface UnbanBody {
+  userId: string;
+  reason?: string | null;
+}
+
+export interface MuteBody {
+  userId: string;
+  minutes: number;
+  reason?: string | null;
+}
+
+export interface UnmuteBody {
+  userId: string;
+}
+
+export interface ClearBody {
+  channelId: string;
+  amount: number;
+}
+
+export interface MassbanBody {
+  /** Space or comma separated list of user IDs */
+  userIds: string;
+  reason?: string | null;
+}
+
+export interface NukeBody {
+  channelId: string;
+}
+
+export interface DmBody {
+  userId: string;
+  message: string;
+}
+
 export interface DiscordRole {
   id: string;
   name: string;

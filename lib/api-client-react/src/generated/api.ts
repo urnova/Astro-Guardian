@@ -18,22 +18,31 @@ import type {
 
 import type {
   AddBannedWordBody,
+  AddWarnBody,
   AnnounceBody,
+  BanBody,
   BannedWord,
   BotStatus,
   BreachBody,
+  ClearBody,
   CreateGiveawayBody,
   CreateSurveyBody,
   DiscordChannel,
   DiscordRole,
+  DmBody,
   GetGuildLogsParams,
   Giveaway,
   GuildConfig,
+  GuildMember,
   GuildStats,
   GuildSummary,
   HealthStatus,
+  KickBody,
   LogEntry,
   MaintenanceBody,
+  MassbanBody,
+  MuteBody,
+  NukeBody,
   SayBody,
   SendEmbedBody,
   SendRulesBody,
@@ -41,6 +50,8 @@ import type {
   SuccessResponse,
   Survey,
   SurveyWithResponses,
+  UnbanBody,
+  UnmuteBody,
   UpdateGuildConfigBody,
   UpdateServerRulesBody,
   Warn,
@@ -630,6 +641,94 @@ export function useGetGuildChannels<
 }
 
 /**
+ * @summary Get guild members
+ */
+export const getGetGuildMembersUrl = (guildId: string) => {
+  return `/api/guilds/${guildId}/members`;
+};
+
+export const getGuildMembers = async (
+  guildId: string,
+  options?: RequestInit,
+): Promise<GuildMember[]> => {
+  return customFetch<GuildMember[]>(getGetGuildMembersUrl(guildId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetGuildMembersQueryKey = (guildId: string) => {
+  return [`/api/guilds/${guildId}/members`] as const;
+};
+
+export const getGetGuildMembersQueryOptions = <
+  TData = Awaited<ReturnType<typeof getGuildMembers>>,
+  TError = ErrorType<unknown>,
+>(
+  guildId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getGuildMembers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetGuildMembersQueryKey(guildId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getGuildMembers>>> = ({
+    signal,
+  }) => getGuildMembers(guildId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!guildId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getGuildMembers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetGuildMembersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getGuildMembers>>
+>;
+export type GetGuildMembersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get guild members
+ */
+
+export function useGetGuildMembers<
+  TData = Awaited<ReturnType<typeof getGuildMembers>>,
+  TError = ErrorType<unknown>,
+>(
+  guildId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getGuildMembers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetGuildMembersQueryOptions(guildId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Get all warns for a guild
  */
 export const getGetGuildWarnsUrl = (guildId: string) => {
@@ -715,6 +814,178 @@ export function useGetGuildWarns<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Add a warn to a member
+ */
+export const getAddWarnUrl = (guildId: string) => {
+  return `/api/guilds/${guildId}/warns`;
+};
+
+export const addWarn = async (
+  guildId: string,
+  addWarnBody: AddWarnBody,
+  options?: RequestInit,
+): Promise<Warn> => {
+  return customFetch<Warn>(getAddWarnUrl(guildId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(addWarnBody),
+  });
+};
+
+export const getAddWarnMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addWarn>>,
+    TError,
+    { guildId: string; data: BodyType<AddWarnBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof addWarn>>,
+  TError,
+  { guildId: string; data: BodyType<AddWarnBody> },
+  TContext
+> => {
+  const mutationKey = ["addWarn"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof addWarn>>,
+    { guildId: string; data: BodyType<AddWarnBody> }
+  > = (props) => {
+    const { guildId, data } = props ?? {};
+
+    return addWarn(guildId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AddWarnMutationResult = NonNullable<
+  Awaited<ReturnType<typeof addWarn>>
+>;
+export type AddWarnMutationBody = BodyType<AddWarnBody>;
+export type AddWarnMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a warn to a member
+ */
+export const useAddWarn = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addWarn>>,
+    TError,
+    { guildId: string; data: BodyType<AddWarnBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof addWarn>>,
+  TError,
+  { guildId: string; data: BodyType<AddWarnBody> },
+  TContext
+> => {
+  return useMutation(getAddWarnMutationOptions(options));
+};
+
+/**
+ * @summary Delete a specific warn
+ */
+export const getDeleteWarnUrl = (guildId: string, warnId: number) => {
+  return `/api/guilds/${guildId}/warns/${warnId}`;
+};
+
+export const deleteWarn = async (
+  guildId: string,
+  warnId: number,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getDeleteWarnUrl(guildId, warnId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteWarnMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteWarn>>,
+    TError,
+    { guildId: string; warnId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteWarn>>,
+  TError,
+  { guildId: string; warnId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteWarn"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteWarn>>,
+    { guildId: string; warnId: number }
+  > = (props) => {
+    const { guildId, warnId } = props ?? {};
+
+    return deleteWarn(guildId, warnId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteWarnMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteWarn>>
+>;
+
+export type DeleteWarnMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a specific warn
+ */
+export const useDeleteWarn = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteWarn>>,
+    TError,
+    { guildId: string; warnId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteWarn>>,
+  TError,
+  { guildId: string; warnId: number },
+  TContext
+> => {
+  return useMutation(getDeleteWarnMutationOptions(options));
+};
 
 /**
  * @summary Get banned words for a guild
@@ -1501,6 +1772,789 @@ export function useGetSurveyById<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Kick a member
+ */
+export const getKickMemberUrl = (guildId: string) => {
+  return `/api/guilds/${guildId}/actions/kick`;
+};
+
+export const kickMember = async (
+  guildId: string,
+  kickBody: KickBody,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getKickMemberUrl(guildId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(kickBody),
+  });
+};
+
+export const getKickMemberMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof kickMember>>,
+    TError,
+    { guildId: string; data: BodyType<KickBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof kickMember>>,
+  TError,
+  { guildId: string; data: BodyType<KickBody> },
+  TContext
+> => {
+  const mutationKey = ["kickMember"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof kickMember>>,
+    { guildId: string; data: BodyType<KickBody> }
+  > = (props) => {
+    const { guildId, data } = props ?? {};
+
+    return kickMember(guildId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type KickMemberMutationResult = NonNullable<
+  Awaited<ReturnType<typeof kickMember>>
+>;
+export type KickMemberMutationBody = BodyType<KickBody>;
+export type KickMemberMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Kick a member
+ */
+export const useKickMember = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof kickMember>>,
+    TError,
+    { guildId: string; data: BodyType<KickBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof kickMember>>,
+  TError,
+  { guildId: string; data: BodyType<KickBody> },
+  TContext
+> => {
+  return useMutation(getKickMemberMutationOptions(options));
+};
+
+/**
+ * @summary Ban a member
+ */
+export const getBanMemberUrl = (guildId: string) => {
+  return `/api/guilds/${guildId}/actions/ban`;
+};
+
+export const banMember = async (
+  guildId: string,
+  banBody: BanBody,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getBanMemberUrl(guildId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(banBody),
+  });
+};
+
+export const getBanMemberMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof banMember>>,
+    TError,
+    { guildId: string; data: BodyType<BanBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof banMember>>,
+  TError,
+  { guildId: string; data: BodyType<BanBody> },
+  TContext
+> => {
+  const mutationKey = ["banMember"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof banMember>>,
+    { guildId: string; data: BodyType<BanBody> }
+  > = (props) => {
+    const { guildId, data } = props ?? {};
+
+    return banMember(guildId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type BanMemberMutationResult = NonNullable<
+  Awaited<ReturnType<typeof banMember>>
+>;
+export type BanMemberMutationBody = BodyType<BanBody>;
+export type BanMemberMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Ban a member
+ */
+export const useBanMember = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof banMember>>,
+    TError,
+    { guildId: string; data: BodyType<BanBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof banMember>>,
+  TError,
+  { guildId: string; data: BodyType<BanBody> },
+  TContext
+> => {
+  return useMutation(getBanMemberMutationOptions(options));
+};
+
+/**
+ * @summary Unban a user
+ */
+export const getUnbanMemberUrl = (guildId: string) => {
+  return `/api/guilds/${guildId}/actions/unban`;
+};
+
+export const unbanMember = async (
+  guildId: string,
+  unbanBody: UnbanBody,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getUnbanMemberUrl(guildId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(unbanBody),
+  });
+};
+
+export const getUnbanMemberMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unbanMember>>,
+    TError,
+    { guildId: string; data: BodyType<UnbanBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof unbanMember>>,
+  TError,
+  { guildId: string; data: BodyType<UnbanBody> },
+  TContext
+> => {
+  const mutationKey = ["unbanMember"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof unbanMember>>,
+    { guildId: string; data: BodyType<UnbanBody> }
+  > = (props) => {
+    const { guildId, data } = props ?? {};
+
+    return unbanMember(guildId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UnbanMemberMutationResult = NonNullable<
+  Awaited<ReturnType<typeof unbanMember>>
+>;
+export type UnbanMemberMutationBody = BodyType<UnbanBody>;
+export type UnbanMemberMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Unban a user
+ */
+export const useUnbanMember = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unbanMember>>,
+    TError,
+    { guildId: string; data: BodyType<UnbanBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof unbanMember>>,
+  TError,
+  { guildId: string; data: BodyType<UnbanBody> },
+  TContext
+> => {
+  return useMutation(getUnbanMemberMutationOptions(options));
+};
+
+/**
+ * @summary Timeout (mute) a member
+ */
+export const getMuteMemberUrl = (guildId: string) => {
+  return `/api/guilds/${guildId}/actions/mute`;
+};
+
+export const muteMember = async (
+  guildId: string,
+  muteBody: MuteBody,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getMuteMemberUrl(guildId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(muteBody),
+  });
+};
+
+export const getMuteMemberMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof muteMember>>,
+    TError,
+    { guildId: string; data: BodyType<MuteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof muteMember>>,
+  TError,
+  { guildId: string; data: BodyType<MuteBody> },
+  TContext
+> => {
+  const mutationKey = ["muteMember"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof muteMember>>,
+    { guildId: string; data: BodyType<MuteBody> }
+  > = (props) => {
+    const { guildId, data } = props ?? {};
+
+    return muteMember(guildId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MuteMemberMutationResult = NonNullable<
+  Awaited<ReturnType<typeof muteMember>>
+>;
+export type MuteMemberMutationBody = BodyType<MuteBody>;
+export type MuteMemberMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Timeout (mute) a member
+ */
+export const useMuteMember = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof muteMember>>,
+    TError,
+    { guildId: string; data: BodyType<MuteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof muteMember>>,
+  TError,
+  { guildId: string; data: BodyType<MuteBody> },
+  TContext
+> => {
+  return useMutation(getMuteMemberMutationOptions(options));
+};
+
+/**
+ * @summary Remove timeout from a member
+ */
+export const getUnmuteMemberUrl = (guildId: string) => {
+  return `/api/guilds/${guildId}/actions/unmute`;
+};
+
+export const unmuteMember = async (
+  guildId: string,
+  unmuteBody: UnmuteBody,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getUnmuteMemberUrl(guildId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(unmuteBody),
+  });
+};
+
+export const getUnmuteMemberMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unmuteMember>>,
+    TError,
+    { guildId: string; data: BodyType<UnmuteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof unmuteMember>>,
+  TError,
+  { guildId: string; data: BodyType<UnmuteBody> },
+  TContext
+> => {
+  const mutationKey = ["unmuteMember"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof unmuteMember>>,
+    { guildId: string; data: BodyType<UnmuteBody> }
+  > = (props) => {
+    const { guildId, data } = props ?? {};
+
+    return unmuteMember(guildId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UnmuteMemberMutationResult = NonNullable<
+  Awaited<ReturnType<typeof unmuteMember>>
+>;
+export type UnmuteMemberMutationBody = BodyType<UnmuteBody>;
+export type UnmuteMemberMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Remove timeout from a member
+ */
+export const useUnmuteMember = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unmuteMember>>,
+    TError,
+    { guildId: string; data: BodyType<UnmuteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof unmuteMember>>,
+  TError,
+  { guildId: string; data: BodyType<UnmuteBody> },
+  TContext
+> => {
+  return useMutation(getUnmuteMemberMutationOptions(options));
+};
+
+/**
+ * @summary Bulk delete messages in a channel
+ */
+export const getClearMessagesUrl = (guildId: string) => {
+  return `/api/guilds/${guildId}/actions/clear`;
+};
+
+export const clearMessages = async (
+  guildId: string,
+  clearBody: ClearBody,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getClearMessagesUrl(guildId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(clearBody),
+  });
+};
+
+export const getClearMessagesMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof clearMessages>>,
+    TError,
+    { guildId: string; data: BodyType<ClearBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof clearMessages>>,
+  TError,
+  { guildId: string; data: BodyType<ClearBody> },
+  TContext
+> => {
+  const mutationKey = ["clearMessages"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof clearMessages>>,
+    { guildId: string; data: BodyType<ClearBody> }
+  > = (props) => {
+    const { guildId, data } = props ?? {};
+
+    return clearMessages(guildId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ClearMessagesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof clearMessages>>
+>;
+export type ClearMessagesMutationBody = BodyType<ClearBody>;
+export type ClearMessagesMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Bulk delete messages in a channel
+ */
+export const useClearMessages = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof clearMessages>>,
+    TError,
+    { guildId: string; data: BodyType<ClearBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof clearMessages>>,
+  TError,
+  { guildId: string; data: BodyType<ClearBody> },
+  TContext
+> => {
+  return useMutation(getClearMessagesMutationOptions(options));
+};
+
+/**
+ * @summary Ban multiple users by ID
+ */
+export const getMassBanMembersUrl = (guildId: string) => {
+  return `/api/guilds/${guildId}/actions/massban`;
+};
+
+export const massBanMembers = async (
+  guildId: string,
+  massbanBody: MassbanBody,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getMassBanMembersUrl(guildId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(massbanBody),
+  });
+};
+
+export const getMassBanMembersMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof massBanMembers>>,
+    TError,
+    { guildId: string; data: BodyType<MassbanBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof massBanMembers>>,
+  TError,
+  { guildId: string; data: BodyType<MassbanBody> },
+  TContext
+> => {
+  const mutationKey = ["massBanMembers"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof massBanMembers>>,
+    { guildId: string; data: BodyType<MassbanBody> }
+  > = (props) => {
+    const { guildId, data } = props ?? {};
+
+    return massBanMembers(guildId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MassBanMembersMutationResult = NonNullable<
+  Awaited<ReturnType<typeof massBanMembers>>
+>;
+export type MassBanMembersMutationBody = BodyType<MassbanBody>;
+export type MassBanMembersMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Ban multiple users by ID
+ */
+export const useMassBanMembers = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof massBanMembers>>,
+    TError,
+    { guildId: string; data: BodyType<MassbanBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof massBanMembers>>,
+  TError,
+  { guildId: string; data: BodyType<MassbanBody> },
+  TContext
+> => {
+  return useMutation(getMassBanMembersMutationOptions(options));
+};
+
+/**
+ * @summary Delete and recreate a channel
+ */
+export const getNukeChannelUrl = (guildId: string) => {
+  return `/api/guilds/${guildId}/actions/nuke`;
+};
+
+export const nukeChannel = async (
+  guildId: string,
+  nukeBody: NukeBody,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getNukeChannelUrl(guildId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(nukeBody),
+  });
+};
+
+export const getNukeChannelMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof nukeChannel>>,
+    TError,
+    { guildId: string; data: BodyType<NukeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof nukeChannel>>,
+  TError,
+  { guildId: string; data: BodyType<NukeBody> },
+  TContext
+> => {
+  const mutationKey = ["nukeChannel"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof nukeChannel>>,
+    { guildId: string; data: BodyType<NukeBody> }
+  > = (props) => {
+    const { guildId, data } = props ?? {};
+
+    return nukeChannel(guildId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type NukeChannelMutationResult = NonNullable<
+  Awaited<ReturnType<typeof nukeChannel>>
+>;
+export type NukeChannelMutationBody = BodyType<NukeBody>;
+export type NukeChannelMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete and recreate a channel
+ */
+export const useNukeChannel = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof nukeChannel>>,
+    TError,
+    { guildId: string; data: BodyType<NukeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof nukeChannel>>,
+  TError,
+  { guildId: string; data: BodyType<NukeBody> },
+  TContext
+> => {
+  return useMutation(getNukeChannelMutationOptions(options));
+};
+
+/**
+ * @summary Send a DM to a guild member
+ */
+export const getSendDmUrl = (guildId: string) => {
+  return `/api/guilds/${guildId}/actions/dm`;
+};
+
+export const sendDm = async (
+  guildId: string,
+  dmBody: DmBody,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getSendDmUrl(guildId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(dmBody),
+  });
+};
+
+export const getSendDmMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendDm>>,
+    TError,
+    { guildId: string; data: BodyType<DmBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendDm>>,
+  TError,
+  { guildId: string; data: BodyType<DmBody> },
+  TContext
+> => {
+  const mutationKey = ["sendDm"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendDm>>,
+    { guildId: string; data: BodyType<DmBody> }
+  > = (props) => {
+    const { guildId, data } = props ?? {};
+
+    return sendDm(guildId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendDmMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendDm>>
+>;
+export type SendDmMutationBody = BodyType<DmBody>;
+export type SendDmMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Send a DM to a guild member
+ */
+export const useSendDm = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendDm>>,
+    TError,
+    { guildId: string; data: BodyType<DmBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendDm>>,
+  TError,
+  { guildId: string; data: BodyType<DmBody> },
+  TContext
+> => {
+  return useMutation(getSendDmMutationOptions(options));
+};
 
 /**
  * @summary Toggle maintenance mode

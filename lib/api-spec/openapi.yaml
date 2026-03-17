@@ -145,6 +145,27 @@ paths:
                 items:
                   $ref: "#/components/schemas/DiscordChannel"
 
+  /guilds/{guildId}/members:
+    get:
+      operationId: getGuildMembers
+      tags: [guilds]
+      summary: Get guild members
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GuildMember"
+
   /guilds/{guildId}/warns:
     get:
       operationId: getGuildWarns
@@ -165,6 +186,53 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Warn"
+    post:
+      operationId: addWarn
+      tags: [warns]
+      summary: Add a warn to a member
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddWarnBody"
+      responses:
+        "201":
+          description: Created warn
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Warn"
+
+  /guilds/{guildId}/warns/{warnId}:
+    delete:
+      operationId: deleteWarn
+      tags: [warns]
+      summary: Delete a specific warn
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: warnId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
 
   /guilds/{guildId}/banned-words:
     get:
@@ -369,6 +437,231 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SurveyWithResponses"
+
+  /guilds/{guildId}/actions/kick:
+    post:
+      operationId: kickMember
+      tags: [actions]
+      summary: Kick a member
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KickBody"
+      responses:
+        "200":
+          description: Done
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /guilds/{guildId}/actions/ban:
+    post:
+      operationId: banMember
+      tags: [actions]
+      summary: Ban a member
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BanBody"
+      responses:
+        "200":
+          description: Done
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /guilds/{guildId}/actions/unban:
+    post:
+      operationId: unbanMember
+      tags: [actions]
+      summary: Unban a user
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnbanBody"
+      responses:
+        "200":
+          description: Done
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /guilds/{guildId}/actions/mute:
+    post:
+      operationId: muteMember
+      tags: [actions]
+      summary: Timeout (mute) a member
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MuteBody"
+      responses:
+        "200":
+          description: Done
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /guilds/{guildId}/actions/unmute:
+    post:
+      operationId: unmuteMember
+      tags: [actions]
+      summary: Remove timeout from a member
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnmuteBody"
+      responses:
+        "200":
+          description: Done
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /guilds/{guildId}/actions/clear:
+    post:
+      operationId: clearMessages
+      tags: [actions]
+      summary: Bulk delete messages in a channel
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClearBody"
+      responses:
+        "200":
+          description: Done
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /guilds/{guildId}/actions/massban:
+    post:
+      operationId: massBanMembers
+      tags: [actions]
+      summary: Ban multiple users by ID
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MassbanBody"
+      responses:
+        "200":
+          description: Done
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /guilds/{guildId}/actions/nuke:
+    post:
+      operationId: nukeChannel
+      tags: [actions]
+      summary: Delete and recreate a channel
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NukeBody"
+      responses:
+        "200":
+          description: Done
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /guilds/{guildId}/actions/dm:
+    post:
+      operationId: sendDm
+      tags: [actions]
+      summary: Send a DM to a guild member
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DmBody"
+      responses:
+        "200":
+          description: Done
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
 
   /guilds/{guildId}/actions/maintenance:
     post:
@@ -1028,6 +1321,120 @@ components:
           type: string
           format: date-time
       required: [id, guildId, action, createdAt]
+
+    GuildMember:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        displayName:
+          type: string
+        avatar:
+          type: string
+          nullable: true
+      required: [id, username, displayName]
+
+    AddWarnBody:
+      type: object
+      properties:
+        userId:
+          type: string
+        reason:
+          type: string
+        moderatorId:
+          type: string
+          nullable: true
+        moderatorName:
+          type: string
+          nullable: true
+      required: [userId, reason]
+
+    KickBody:
+      type: object
+      properties:
+        userId:
+          type: string
+        reason:
+          type: string
+          nullable: true
+      required: [userId]
+
+    BanBody:
+      type: object
+      properties:
+        userId:
+          type: string
+        reason:
+          type: string
+          nullable: true
+      required: [userId]
+
+    UnbanBody:
+      type: object
+      properties:
+        userId:
+          type: string
+        reason:
+          type: string
+          nullable: true
+      required: [userId]
+
+    MuteBody:
+      type: object
+      properties:
+        userId:
+          type: string
+        minutes:
+          type: integer
+        reason:
+          type: string
+          nullable: true
+      required: [userId, minutes]
+
+    UnmuteBody:
+      type: object
+      properties:
+        userId:
+          type: string
+      required: [userId]
+
+    ClearBody:
+      type: object
+      properties:
+        channelId:
+          type: string
+        amount:
+          type: integer
+      required: [channelId, amount]
+
+    MassbanBody:
+      type: object
+      properties:
+        userIds:
+          type: string
+          description: "Space or comma separated list of user IDs"
+        reason:
+          type: string
+          nullable: true
+      required: [userIds]
+
+    NukeBody:
+      type: object
+      properties:
+        channelId:
+          type: string
+      required: [channelId]
+
+    DmBody:
+      type: object
+      properties:
+        userId:
+          type: string
+        message:
+          type: string
+      required: [userId, message]
 
     DiscordRole:
       type: object

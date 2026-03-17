@@ -129,6 +129,21 @@ export const GetGuildChannelsResponseItem = zod.object({
 export const GetGuildChannelsResponse = zod.array(GetGuildChannelsResponseItem);
 
 /**
+ * @summary Get guild members
+ */
+export const GetGuildMembersParams = zod.object({
+  guildId: zod.coerce.string(),
+});
+
+export const GetGuildMembersResponseItem = zod.object({
+  id: zod.string(),
+  username: zod.string(),
+  displayName: zod.string(),
+  avatar: zod.string().nullish(),
+});
+export const GetGuildMembersResponse = zod.array(GetGuildMembersResponseItem);
+
+/**
  * @summary Get all warns for a guild
  */
 export const GetGuildWarnsParams = zod.object({
@@ -146,6 +161,33 @@ export const GetGuildWarnsResponseItem = zod.object({
   createdAt: zod.date(),
 });
 export const GetGuildWarnsResponse = zod.array(GetGuildWarnsResponseItem);
+
+/**
+ * @summary Add a warn to a member
+ */
+export const AddWarnParams = zod.object({
+  guildId: zod.coerce.string(),
+});
+
+export const AddWarnBody = zod.object({
+  userId: zod.string(),
+  reason: zod.string(),
+  moderatorId: zod.string().nullish(),
+  moderatorName: zod.string().nullish(),
+});
+
+/**
+ * @summary Delete a specific warn
+ */
+export const DeleteWarnParams = zod.object({
+  guildId: zod.coerce.string(),
+  warnId: zod.coerce.number(),
+});
+
+export const DeleteWarnResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
 
 /**
  * @summary Get banned words for a guild
@@ -299,6 +341,158 @@ export const GetSurveyByIdResponse = zod.object({
       createdAt: zod.date(),
     }),
   ),
+});
+
+/**
+ * @summary Kick a member
+ */
+export const KickMemberParams = zod.object({
+  guildId: zod.coerce.string(),
+});
+
+export const KickMemberBody = zod.object({
+  userId: zod.string(),
+  reason: zod.string().nullish(),
+});
+
+export const KickMemberResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
+/**
+ * @summary Ban a member
+ */
+export const BanMemberParams = zod.object({
+  guildId: zod.coerce.string(),
+});
+
+export const BanMemberBody = zod.object({
+  userId: zod.string(),
+  reason: zod.string().nullish(),
+});
+
+export const BanMemberResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
+/**
+ * @summary Unban a user
+ */
+export const UnbanMemberParams = zod.object({
+  guildId: zod.coerce.string(),
+});
+
+export const UnbanMemberBody = zod.object({
+  userId: zod.string(),
+  reason: zod.string().nullish(),
+});
+
+export const UnbanMemberResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
+/**
+ * @summary Timeout (mute) a member
+ */
+export const MuteMemberParams = zod.object({
+  guildId: zod.coerce.string(),
+});
+
+export const MuteMemberBody = zod.object({
+  userId: zod.string(),
+  minutes: zod.number(),
+  reason: zod.string().nullish(),
+});
+
+export const MuteMemberResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
+/**
+ * @summary Remove timeout from a member
+ */
+export const UnmuteMemberParams = zod.object({
+  guildId: zod.coerce.string(),
+});
+
+export const UnmuteMemberBody = zod.object({
+  userId: zod.string(),
+});
+
+export const UnmuteMemberResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
+/**
+ * @summary Bulk delete messages in a channel
+ */
+export const ClearMessagesParams = zod.object({
+  guildId: zod.coerce.string(),
+});
+
+export const ClearMessagesBody = zod.object({
+  channelId: zod.string(),
+  amount: zod.number(),
+});
+
+export const ClearMessagesResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
+/**
+ * @summary Ban multiple users by ID
+ */
+export const MassBanMembersParams = zod.object({
+  guildId: zod.coerce.string(),
+});
+
+export const MassBanMembersBody = zod.object({
+  userIds: zod.string().describe("Space or comma separated list of user IDs"),
+  reason: zod.string().nullish(),
+});
+
+export const MassBanMembersResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
+/**
+ * @summary Delete and recreate a channel
+ */
+export const NukeChannelParams = zod.object({
+  guildId: zod.coerce.string(),
+});
+
+export const NukeChannelBody = zod.object({
+  channelId: zod.string(),
+});
+
+export const NukeChannelResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
+/**
+ * @summary Send a DM to a guild member
+ */
+export const SendDmParams = zod.object({
+  guildId: zod.coerce.string(),
+});
+
+export const SendDmBody = zod.object({
+  userId: zod.string(),
+  message: zod.string(),
+});
+
+export const SendDmResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
 });
 
 /**

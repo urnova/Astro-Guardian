@@ -13,7 +13,11 @@ import {
   useCreateGiveaway, useEndGiveaway, useGetSurveys,
   useCreateSurvey, useTriggerMaintenance, useTriggerBreach,
   useSendEmbed, useSendAnnouncement, useSendSay, useGetGuildLogs,
-  useGetGuildRules, useSendGuildRules, useGetGuildRoles
+  useGetGuildRules, useSendGuildRules, useGetGuildRoles,
+  useGetGuildMembers, useAddWarn, useDeleteWarn,
+  useKickMember, useBanMember, useUnbanMember,
+  useMuteMember, useUnmuteMember, useClearMessages,
+  useMassBanMembers, useNukeChannel, useSendDm
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { CyberCard, CyberButton, CyberInput, CyberBadge, CyberSelect } from '@/components/CyberUI';
@@ -221,71 +225,224 @@ function ConfigTab({ guildId }: { guildId: string }) {
 function ModerationTab({ guildId }: { guildId: string }) {
   const { data: warns } = useGetGuildWarns(guildId);
   const { data: words } = useGetBannedWords(guildId);
+  const { data: members } = useGetGuildMembers(guildId);
+  const { data: channels } = useGetGuildChannels(guildId);
   const { mutate: addWord, isPending: addingWord } = useAddBannedWord();
   const { mutate: delWord } = useDeleteBannedWord();
+  const { mutate: addWarn, isPending: warningMember } = useAddWarn();
+  const { mutate: delWarn } = useDeleteWarn();
+  const { mutate: kickMember, isPending: kicking } = useKickMember();
+  const { mutate: banMember, isPending: banning } = useBanMember();
+  const { mutate: unbanMember, isPending: unbanning } = useUnbanMember();
+  const { mutate: muteMember, isPending: muting } = useMuteMember();
+  const { mutate: unmuteMember, isPending: unmuting } = useUnmuteMember();
+  const { mutate: clearMessages, isPending: clearing } = useClearMessages();
+  const { mutate: massBan, isPending: massBanning } = useMassBanMembers();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+
   const [newWord, setNewWord] = useState('');
+  const [selectedMember, setSelectedMember] = useState('');
+  const [reason, setReason] = useState('');
+  const [muteMinutes, setMuteMinutes] = useState(10);
+  const [unbanId, setUnbanId] = useState('');
+  const [clearData, setClearData] = useState({ channelId: '', amount: 10 });
+  const [massBanIds, setMassBanIds] = useState('');
+  const [massBanReason, setMassBanReason] = useState('');
 
-  const handleAddWord = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newWord.trim()) return;
-    addWord({ guildId, data: { word: newWord } }, {
-      onSuccess: () => {
-        setNewWord('');
-        queryClient.invalidateQueries({ queryKey: [`/api/guilds/${guildId}/banned-words`] });
-      }
-    });
+  const invalidateWarns = () => queryClient.invalidateQueries({ queryKey: [`/api/guilds/${guildId}/warns`] });
+  const invalidateWords = () => queryClient.invalidateQueries({ queryKey: [`/api/guilds/${guildId}/banned-words`] });
+
+  const handleAction = (
+    fn: () => void,
+    successMsg: string,
+    needsMember = true
+  ) => {
+    if (needsMember && !selectedMember) { toast({ title: 'Sélectionnez un membre', variant: 'destructive' }); return; }
+    fn();
   };
 
-  const handleDeleteWord = (id: number) => {
-    delWord({ guildId, wordId: id }, {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: [`/api/guilds/${guildId}/banned-words`] })
-    });
-  };
+  const runKick = () => kickMember({ guildId, data: { userId: selectedMember, reason: reason || undefined } }, {
+    onSuccess: r => { toast({ title: r.message }); setReason(''); invalidateWarns(); },
+    onError: () => toast({ title: 'Erreur kick', variant: 'destructive' }),
+  });
+  const runBan = () => banMember({ guildId, data: { userId: selectedMember, reason: reason || undefined } }, {
+    onSuccess: r => { toast({ title: r.message }); setReason(''); },
+    onError: () => toast({ title: 'Erreur ban', variant: 'destructive' }),
+  });
+  const runMute = () => muteMember({ guildId, data: { userId: selectedMember, minutes: muteMinutes, reason: reason || undefined } }, {
+    onSuccess: r => { toast({ title: r.message }); setReason(''); },
+    onError: () => toast({ title: 'Erreur mute', variant: 'destructive' }),
+  });
+  const runUnmute = () => unmuteMember({ guildId, data: { userId: selectedMember } }, {
+    onSuccess: r => toast({ title: r.message }),
+    onError: () => toast({ title: 'Erreur unmute', variant: 'destructive' }),
+  });
+  const runWarn = () => addWarn({ guildId, data: { userId: selectedMember, reason: reason || 'Avertissement via panel' } }, {
+    onSuccess: () => { toast({ title: 'Avertissement ajouté' }); setReason(''); invalidateWarns(); },
+    onError: () => toast({ title: 'Erreur warn', variant: 'destructive' }),
+  });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div className="space-y-8">
+      {/* ACTIONS RAPIDES */}
       <CyberCard>
         <h2 className="text-lg font-bold text-destructive mb-5 flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5" /> Mots bannis
+          <ShieldAlert className="w-5 h-5" /> Actions de modération
         </h2>
-        <form onSubmit={handleAddWord} className="flex gap-2 mb-5">
-          <CyberInput 
-            placeholder="Ajouter un mot à filtrer…" 
-            value={newWord}
-            onChange={e => setNewWord(e.target.value)}
-          />
-          <CyberButton type="submit" isLoading={addingWord}>Ajouter</CyberButton>
-        </form>
-        <div className="flex flex-wrap gap-2">
-          {words?.map(w => (
-            <div key={w.id} className="flex items-center gap-2 bg-destructive/10 border border-destructive/30 px-3 py-1.5 rounded">
-              <span className="font-body text-sm text-destructive">{w.word}</span>
-              <button onClick={() => handleDeleteWord(w.id)} className="text-destructive/50 hover:text-destructive transition-colors text-lg leading-none">×</button>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-3">
+            <div>
+              <label className="block font-body text-xs text-muted-foreground uppercase tracking-widest mb-2">Membre cible</label>
+              <CyberSelect value={selectedMember} onChange={e => setSelectedMember(e.target.value)}>
+                <option value="">— Choisir un membre —</option>
+                {members?.map(m => <option key={m.id} value={m.id}>{m.displayName} ({m.username})</option>)}
+              </CyberSelect>
             </div>
-          ))}
-          {words?.length === 0 && <p className="text-muted-foreground italic text-sm">Aucun filtre actif.</p>}
+            <div>
+              <label className="block font-body text-xs text-muted-foreground uppercase tracking-widest mb-2">Raison (optionnel)</label>
+              <CyberInput placeholder="Raison de l'action…" value={reason} onChange={e => setReason(e.target.value)} />
+            </div>
+            <div>
+              <label className="block font-body text-xs text-muted-foreground uppercase tracking-widest mb-2">Durée timeout (minutes)</label>
+              <CyberInput type="number" min="1" max="40320" value={muteMinutes} onChange={e => setMuteMinutes(parseInt(e.target.value))} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 content-start">
+            <CyberButton onClick={() => handleAction(runWarn, 'warn')} isLoading={warningMember} className="text-sm py-2.5" style={{ borderColor: '#facc15', color: '#facc15' }}>
+              ⚠️ Avertir
+            </CyberButton>
+            <CyberButton onClick={() => handleAction(runKick, 'kick')} isLoading={kicking} className="text-sm py-2.5" style={{ borderColor: '#f97316', color: '#f97316' }}>
+              👢 Expulser
+            </CyberButton>
+            <CyberButton onClick={() => handleAction(runMute, 'mute')} isLoading={muting} className="text-sm py-2.5" style={{ borderColor: '#8b5cf6', color: '#8b5cf6' }}>
+              🔇 Timeout
+            </CyberButton>
+            <CyberButton onClick={() => handleAction(runUnmute, 'unmute')} isLoading={unmuting} className="text-sm py-2.5">
+              🔊 Retirer timeout
+            </CyberButton>
+            <CyberButton variant="destructive" onClick={() => {
+              if (!selectedMember) { toast({ title: 'Sélectionnez un membre', variant: 'destructive' }); return; }
+              if (!confirm(`Bannir cet utilisateur ?`)) return;
+              runBan();
+            }} isLoading={banning} className="text-sm py-2.5 col-span-2">
+              🔨 Bannir le membre
+            </CyberButton>
+          </div>
+        </div>
+
+        {/* Unban par ID */}
+        <div className="mt-5 pt-5 border-t border-primary/20">
+          <label className="block font-body text-xs text-muted-foreground uppercase tracking-widest mb-2">Débannir par ID Discord</label>
+          <div className="flex gap-2">
+            <CyberInput placeholder="ID Discord (ex: 123456789012345678)" value={unbanId} onChange={e => setUnbanId(e.target.value)} />
+            <CyberButton isLoading={unbanning} onClick={() => {
+              if (!unbanId.trim()) return;
+              unbanMember({ guildId, data: { userId: unbanId.trim() } }, {
+                onSuccess: r => { toast({ title: r.message }); setUnbanId(''); },
+                onError: () => toast({ title: 'Introuvable dans les bans', variant: 'destructive' }),
+              });
+            }}>Débannir</CyberButton>
+          </div>
+        </div>
+
+        {/* Clear + Mass ban */}
+        <div className="mt-5 pt-5 border-t border-primary/20 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <h3 className="font-body text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+              🧹 Purger des messages
+            </h3>
+            <div className="space-y-2">
+              <CyberSelect value={clearData.channelId} onChange={e => setClearData(p => ({ ...p, channelId: e.target.value }))}>
+                <option value="">— Choisir un salon —</option>
+                {channels?.map(c => <option key={c.id} value={c.id}>#{c.name}</option>)}
+              </CyberSelect>
+              <div className="flex gap-2 items-center">
+                <CyberInput type="number" min="1" max="100" placeholder="Nb messages (max 100)" value={clearData.amount} onChange={e => setClearData(p => ({ ...p, amount: parseInt(e.target.value) }))} />
+                <CyberButton isLoading={clearing} onClick={() => {
+                  if (!clearData.channelId) { toast({ title: 'Choisissez un salon', variant: 'destructive' }); return; }
+                  clearMessages({ guildId, data: { channelId: clearData.channelId, amount: clearData.amount } }, {
+                    onSuccess: r => toast({ title: r.message }),
+                    onError: () => toast({ title: 'Erreur purge', variant: 'destructive' }),
+                  });
+                }}>Purger</CyberButton>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h3 className="font-body text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+              🔨 Ban de masse
+            </h3>
+            <div className="space-y-2">
+              <textarea
+                className="w-full h-20 bg-background border border-primary/30 px-3 py-2 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary rounded resize-none"
+                placeholder="IDs Discord séparés par des espaces ou virgules…"
+                value={massBanIds}
+                onChange={e => setMassBanIds(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <CyberInput placeholder="Raison" value={massBanReason} onChange={e => setMassBanReason(e.target.value)} />
+                <CyberButton variant="destructive" isLoading={massBanning} onClick={() => {
+                  if (!massBanIds.trim()) return;
+                  if (!confirm('Bannir tous ces utilisateurs ?')) return;
+                  massBan({ guildId, data: { userIds: massBanIds, reason: massBanReason || undefined } }, {
+                    onSuccess: r => { toast({ title: r.message }); setMassBanIds(''); setMassBanReason(''); },
+                    onError: () => toast({ title: 'Erreur ban de masse', variant: 'destructive' }),
+                  });
+                }}>Bannir tout</CyberButton>
+              </div>
+            </div>
+          </div>
         </div>
       </CyberCard>
 
-      <CyberCard>
-        <h2 className="text-lg font-bold text-primary mb-5 flex items-center gap-2">
-          <ShieldAlert className="w-5 h-5" /> Avertissements récents
-        </h2>
-        <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-          {warns?.map(w => (
-            <div key={w.id} className="bg-background/50 border border-primary/15 p-4 rounded">
-              <div className="flex justify-between items-start mb-1.5">
-                <span className="font-semibold text-primary text-sm">{w.username}</span>
-                <span className="text-xs text-muted-foreground">{format(new Date(w.createdAt), 'd MMM yyyy HH:mm', { locale: fr })}</span>
+      {/* WARNS + MOTS BANNIS */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <CyberCard>
+          <h2 className="text-lg font-bold text-destructive mb-5 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5" /> Mots bannis
+          </h2>
+          <form onSubmit={e => { e.preventDefault(); if (!newWord.trim()) return; addWord({ guildId, data: { word: newWord } }, { onSuccess: () => { setNewWord(''); invalidateWords(); } }); }} className="flex gap-2 mb-5">
+            <CyberInput placeholder="Ajouter un mot à filtrer…" value={newWord} onChange={e => setNewWord(e.target.value)} />
+            <CyberButton type="submit" isLoading={addingWord}>Ajouter</CyberButton>
+          </form>
+          <div className="flex flex-wrap gap-2">
+            {words?.map(w => (
+              <div key={w.id} className="flex items-center gap-2 bg-destructive/10 border border-destructive/30 px-3 py-1.5 rounded">
+                <span className="font-body text-sm text-destructive">{w.word}</span>
+                <button onClick={() => delWord({ guildId, wordId: w.id }, { onSuccess: invalidateWords })} className="text-destructive/50 hover:text-destructive transition-colors text-lg leading-none">×</button>
               </div>
-              <p className="text-sm text-foreground mb-1">{w.reason}</p>
-              <p className="text-xs text-muted-foreground">Par {w.moderatorName}</p>
-            </div>
-          ))}
-          {warns?.length === 0 && <p className="text-muted-foreground italic text-sm">Aucun avertissement émis.</p>}
-        </div>
-      </CyberCard>
+            ))}
+            {words?.length === 0 && <p className="text-muted-foreground italic text-sm">Aucun filtre actif.</p>}
+          </div>
+        </CyberCard>
+
+        <CyberCard>
+          <h2 className="text-lg font-bold text-primary mb-5 flex items-center gap-2">
+            <ShieldAlert className="w-5 h-5" /> Avertissements récents
+          </h2>
+          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+            {warns?.map(w => (
+              <div key={w.id} className="bg-background/50 border border-primary/15 p-4 rounded">
+                <div className="flex justify-between items-start mb-1.5">
+                  <span className="font-semibold text-primary text-sm">{w.username}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{format(new Date(w.createdAt), 'd MMM yyyy HH:mm', { locale: fr })}</span>
+                    <button
+                      onClick={() => delWarn({ guildId, warnId: w.id }, { onSuccess: () => { toast({ title: 'Warn retiré' }); invalidateWarns(); } })}
+                      className="text-destructive/40 hover:text-destructive transition-colors text-base leading-none"
+                      title="Supprimer ce warn"
+                    >×</button>
+                  </div>
+                </div>
+                <p className="text-sm text-foreground mb-1">{w.reason}</p>
+                <p className="text-xs text-muted-foreground">Par {w.moderatorName}</p>
+              </div>
+            ))}
+            {warns?.length === 0 && <p className="text-muted-foreground italic text-sm">Aucun avertissement émis.</p>}
+          </div>
+        </CyberCard>
+      </div>
     </div>
   );
 }
