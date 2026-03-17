@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { 
   Activity, ShieldAlert, Settings, MessageSquare, 
-  Gift, CheckSquare, ListOrdered, Wrench, Shield, AlertTriangle, Users, Hash
+  Gift, CheckSquare, ListOrdered, Wrench, Shield, AlertTriangle, Users, Hash, FileText
 } from 'lucide-react';
 import { 
   useGetGuildConfig, useUpdateGuildConfig, useGetGuildStats,
@@ -12,13 +12,14 @@ import {
   useAddBannedWord, useDeleteBannedWord, useGetGiveaways,
   useCreateGiveaway, useEndGiveaway, useGetSurveys,
   useCreateSurvey, useTriggerMaintenance, useTriggerBreach,
-  useSendEmbed, useSendAnnouncement, useSendSay, useGetGuildLogs
+  useSendEmbed, useSendAnnouncement, useSendSay, useGetGuildLogs,
+  useGetGuildRules, useSendGuildRules, useGetGuildRoles
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { CyberCard, CyberButton, CyberInput, CyberBadge, CyberSelect } from '@/components/CyberUI';
 import { useToast } from '@/hooks/use-toast';
 
-type Tab = 'overview' | 'config' | 'moderation' | 'security' | 'messaging' | 'giveaways' | 'surveys' | 'logs';
+type Tab = 'overview' | 'config' | 'moderation' | 'security' | 'messaging' | 'giveaways' | 'surveys' | 'rules' | 'logs';
 
 const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'overview',    label: 'Vue d\'ensemble', icon: <Activity className="w-4 h-4" /> },
@@ -28,6 +29,7 @@ const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'messaging',   label: 'Messagerie',       icon: <MessageSquare className="w-4 h-4" /> },
   { id: 'giveaways',   label: 'Giveaways',        icon: <Gift className="w-4 h-4" /> },
   { id: 'surveys',     label: 'Questionnaires',   icon: <CheckSquare className="w-4 h-4" /> },
+  { id: 'rules',       label: 'Règles',           icon: <FileText className="w-4 h-4" /> },
   { id: 'logs',        label: 'Journaux',         icon: <ListOrdered className="w-4 h-4" /> },
 ];
 
@@ -71,6 +73,7 @@ export default function GuildView() {
         {activeTab === 'messaging'  && <MessagingTab  guildId={guildId} />}
         {activeTab === 'giveaways'  && <GiveawaysTab  guildId={guildId} />}
         {activeTab === 'surveys'    && <SurveysTab    guildId={guildId} />}
+        {activeTab === 'rules'      && <RulesTab      guildId={guildId} />}
         {activeTab === 'logs'       && <LogsTab       guildId={guildId} />}
       </div>
     </div>
@@ -641,6 +644,203 @@ function SurveysTab({ guildId }: { guildId: string }) {
           ))}
           {surveys?.length === 0 && <p className="text-muted-foreground italic text-sm">Aucun questionnaire actif.</p>}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────── Règles du serveur ─────────────────── */
+function RulesTab({ guildId }: { guildId: string }) {
+  const { data: rules, isLoading } = useGetGuildRules(guildId);
+  const { data: channels } = useGetGuildChannels(guildId);
+  const { data: roles } = useGetGuildRoles(guildId);
+  const { mutate: sendRules, isPending: sending } = useSendGuildRules();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const [form, setForm] = useState({
+    channelId: '',
+    title: 'Règles du serveur',
+    description: '',
+    memberRoleId: '',
+  });
+
+  React.useEffect(() => {
+    if (rules) {
+      setForm({
+        channelId: rules.channelId || '',
+        title: rules.title || 'Règles du serveur',
+        description: rules.description || '',
+        memberRoleId: rules.memberRoleId || '',
+      });
+    }
+  }, [rules]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.channelId || !form.title || !form.description) return;
+    sendRules({
+      guildId,
+      data: {
+        channelId: form.channelId,
+        title: form.title,
+        description: form.description,
+        memberRoleId: form.memberRoleId || null,
+      }
+    }, {
+      onSuccess: () => {
+        toast({ title: 'Règles publiées', description: 'Le message de règles a été envoyé ou mis à jour dans le salon sélectionné.' });
+        queryClient.invalidateQueries({ queryKey: [`/api/guilds/${guildId}/rules`] });
+      },
+      onError: () => {
+        toast({ title: 'Erreur', description: 'Impossible d\'envoyer les règles. Vérifiez que le bot est connecté.', variant: 'destructive' });
+      }
+    });
+  };
+
+  if (isLoading) return <p className="text-primary animate-pulse font-display text-sm">Chargement de la configuration des règles...</p>;
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Formulaire de configuration */}
+      <CyberCard>
+        <h2 className="text-lg font-bold text-primary mb-6 flex items-center gap-2">
+          <FileText className="w-5 h-5" /> Configuration des règles
+        </h2>
+
+        {rules?.messageId && (
+          <div className="mb-5 p-3 bg-primary/10 border border-primary/30 rounded text-sm font-body text-primary/80">
+            ✅ Un message de règles existe déjà. L'enregistrement le mettra à jour.
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="block font-body text-sm text-foreground mb-2">Salon de publication</label>
+            <CyberSelect
+              value={form.channelId}
+              onChange={e => setForm(f => ({ ...f, channelId: e.target.value }))}
+              required
+            >
+              <option value="">— Choisir un salon —</option>
+              {channels?.map(c => <option key={c.id} value={c.id}>#{c.name}</option>)}
+            </CyberSelect>
+          </div>
+
+          <div>
+            <label className="block font-body text-sm text-foreground mb-2">Titre du message</label>
+            <CyberInput
+              placeholder="Règles du serveur"
+              value={form.title}
+              onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block font-body text-sm text-foreground mb-2">Contenu des règles</label>
+            <textarea
+              className="w-full h-52 bg-background border border-primary/30 px-4 py-3 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary rounded resize-none"
+              placeholder="1. Respecter tous les membres&#10;2. Pas de spam ni publicité&#10;3. Contenu approprié uniquement&#10;..."
+              value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block font-body text-sm text-foreground mb-2">
+              Rôle à attribuer à l'acceptation <span className="text-muted-foreground text-xs">(optionnel)</span>
+            </label>
+            <CyberSelect
+              value={form.memberRoleId}
+              onChange={e => setForm(f => ({ ...f, memberRoleId: e.target.value }))}
+            >
+              <option value="">— Aucun rôle —</option>
+              {roles?.map(r => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </CyberSelect>
+            <p className="text-xs text-muted-foreground mt-1.5">Ce rôle sera automatiquement assigné quand un membre clique sur "J'accepte les règles".</p>
+          </div>
+
+          <CyberButton type="submit" isLoading={sending} className="w-full">
+            {rules ? 'Mettre à jour & republier les règles' : 'Publier les règles'}
+          </CyberButton>
+        </form>
+      </CyberCard>
+
+      {/* Aperçu de la configuration actuelle */}
+      <div className="space-y-6">
+        <CyberCard>
+          <h2 className="text-lg font-bold text-foreground mb-5 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-primary" /> Configuration actuelle
+          </h2>
+          {rules ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-background/50 border border-primary/15 p-3 rounded">
+                  <p className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1">Statut</p>
+                  <CyberBadge variant={rules.enabled ? 'primary' : 'outline'}>
+                    {rules.enabled ? 'ACTIF' : 'INACTIF'}
+                  </CyberBadge>
+                </div>
+                <div className="bg-background/50 border border-primary/15 p-3 rounded">
+                  <p className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1">Message envoyé</p>
+                  <CyberBadge variant={rules.messageId ? 'primary' : 'outline'}>
+                    {rules.messageId ? 'OUI' : 'NON'}
+                  </CyberBadge>
+                </div>
+              </div>
+
+              <div className="bg-background/50 border border-primary/15 p-3 rounded">
+                <p className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1.5">Titre</p>
+                <p className="text-sm font-semibold text-foreground">{rules.title}</p>
+              </div>
+
+              <div className="bg-background/50 border border-primary/15 p-3 rounded">
+                <p className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1.5">Salon configuré</p>
+                <p className="text-sm font-semibold text-primary">
+                  #{channels?.find(c => c.id === rules.channelId)?.name ?? rules.channelId}
+                </p>
+              </div>
+
+              {rules.memberRoleId && (
+                <div className="bg-background/50 border border-primary/15 p-3 rounded">
+                  <p className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1.5">Rôle attribué</p>
+                  <p className="text-sm font-semibold text-primary">
+                    @{roles?.find(r => r.id === rules.memberRoleId)?.name ?? rules.memberRoleId}
+                  </p>
+                </div>
+              )}
+
+              <div className="bg-background/50 border border-primary/15 p-3 rounded">
+                <p className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1.5">Dernière mise à jour</p>
+                <p className="text-sm text-muted-foreground">{format(new Date(rules.updatedAt), 'd MMM yyyy à HH:mm', { locale: fr })}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-10">
+              <FileText className="w-10 h-10 text-primary/20 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground italic">Aucune règle configurée.</p>
+              <p className="text-xs text-muted-foreground mt-1">Remplissez le formulaire et publiez pour créer le premier message de règles.</p>
+            </div>
+          )}
+        </CyberCard>
+
+        <CyberCard className="border-primary/20">
+          <h3 className="font-body text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+            <Shield className="w-4 h-4 text-primary" /> Fonctionnement
+          </h3>
+          <ul className="space-y-2 text-xs font-body text-muted-foreground">
+            <li className="flex items-start gap-2"><span className="text-primary mt-0.5">▸</span> Le bot envoie un embed avec le titre et les règles dans le salon choisi.</li>
+            <li className="flex items-start gap-2"><span className="text-primary mt-0.5">▸</span> Un bouton "J'accepte les règles" est affiché sous le message.</li>
+            <li className="flex items-start gap-2"><span className="text-primary mt-0.5">▸</span> En cliquant, le membre reçoit automatiquement le rôle configuré.</li>
+            <li className="flex items-start gap-2"><span className="text-primary mt-0.5">▸</span> La commande /rules setup est aussi disponible depuis Discord.</li>
+          </ul>
+        </CyberCard>
       </div>
     </div>
   );

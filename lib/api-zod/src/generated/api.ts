@@ -394,6 +394,89 @@ export const SendSayResponse = zod.object({
 });
 
 /**
+ * @summary Get guild roles
+ */
+export const GetGuildRolesParams = zod.object({
+  guildId: zod.coerce.string(),
+});
+
+export const GetGuildRolesResponseItem = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  color: zod.string(),
+});
+export const GetGuildRolesResponse = zod.array(GetGuildRolesResponseItem);
+
+/**
+ * @summary Get server rules configuration
+ */
+export const GetGuildRulesParams = zod.object({
+  guildId: zod.coerce.string(),
+});
+
+export const GetGuildRulesResponse = zod
+  .object({
+    id: zod.number(),
+    guildId: zod.string(),
+    channelId: zod.string(),
+    messageId: zod.string().nullish(),
+    title: zod.string(),
+    description: zod.string(),
+    memberRoleId: zod.string().nullish(),
+    enabled: zod.boolean(),
+    createdAt: zod.date(),
+    updatedAt: zod.date(),
+  })
+  .nullable();
+
+/**
+ * @summary Update server rules configuration
+ */
+export const UpdateGuildRulesParams = zod.object({
+  guildId: zod.coerce.string(),
+});
+
+export const UpdateGuildRulesBody = zod.object({
+  channelId: zod.string().optional(),
+  title: zod.string().optional(),
+  description: zod.string().optional(),
+  memberRoleId: zod.string().nullish(),
+  enabled: zod.boolean().optional(),
+});
+
+export const UpdateGuildRulesResponse = zod.object({
+  id: zod.number(),
+  guildId: zod.string(),
+  channelId: zod.string(),
+  messageId: zod.string().nullish(),
+  title: zod.string(),
+  description: zod.string(),
+  memberRoleId: zod.string().nullish(),
+  enabled: zod.boolean(),
+  createdAt: zod.date(),
+  updatedAt: zod.date(),
+});
+
+/**
+ * @summary Send or update the rules message in a channel
+ */
+export const SendGuildRulesParams = zod.object({
+  guildId: zod.coerce.string(),
+});
+
+export const SendGuildRulesBody = zod.object({
+  channelId: zod.string(),
+  title: zod.string(),
+  description: zod.string(),
+  memberRoleId: zod.string().nullish(),
+});
+
+export const SendGuildRulesResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
+/**
  * @summary Get recent logs for a guild
  */
 export const GetGuildLogsParams = zod.object({

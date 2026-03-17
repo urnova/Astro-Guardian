@@ -25,6 +25,7 @@ import type {
   CreateGiveawayBody,
   CreateSurveyBody,
   DiscordChannel,
+  DiscordRole,
   GetGuildLogsParams,
   Giveaway,
   GuildConfig,
@@ -35,10 +36,13 @@ import type {
   MaintenanceBody,
   SayBody,
   SendEmbedBody,
+  SendRulesBody,
+  ServerRules,
   SuccessResponse,
   Survey,
   SurveyWithResponses,
   UpdateGuildConfigBody,
+  UpdateServerRulesBody,
   Warn,
 } from "./api.schemas";
 
@@ -1931,6 +1935,354 @@ export const useSendSay = <
   TContext
 > => {
   return useMutation(getSendSayMutationOptions(options));
+};
+
+/**
+ * @summary Get guild roles
+ */
+export const getGetGuildRolesUrl = (guildId: string) => {
+  return `/api/guilds/${guildId}/roles`;
+};
+
+export const getGuildRoles = async (
+  guildId: string,
+  options?: RequestInit,
+): Promise<DiscordRole[]> => {
+  return customFetch<DiscordRole[]>(getGetGuildRolesUrl(guildId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetGuildRolesQueryKey = (guildId: string) => {
+  return [`/api/guilds/${guildId}/roles`] as const;
+};
+
+export const getGetGuildRolesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getGuildRoles>>,
+  TError = ErrorType<unknown>,
+>(
+  guildId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getGuildRoles>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetGuildRolesQueryKey(guildId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getGuildRoles>>> = ({
+    signal,
+  }) => getGuildRoles(guildId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!guildId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getGuildRoles>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetGuildRolesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getGuildRoles>>
+>;
+export type GetGuildRolesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get guild roles
+ */
+
+export function useGetGuildRoles<
+  TData = Awaited<ReturnType<typeof getGuildRoles>>,
+  TError = ErrorType<unknown>,
+>(
+  guildId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getGuildRoles>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetGuildRolesQueryOptions(guildId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get server rules configuration
+ */
+export const getGetGuildRulesUrl = (guildId: string) => {
+  return `/api/guilds/${guildId}/rules`;
+};
+
+export const getGuildRules = async (
+  guildId: string,
+  options?: RequestInit,
+): Promise<ServerRules | null> => {
+  return customFetch<ServerRules | null>(getGetGuildRulesUrl(guildId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetGuildRulesQueryKey = (guildId: string) => {
+  return [`/api/guilds/${guildId}/rules`] as const;
+};
+
+export const getGetGuildRulesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getGuildRules>>,
+  TError = ErrorType<unknown>,
+>(
+  guildId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getGuildRules>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetGuildRulesQueryKey(guildId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getGuildRules>>> = ({
+    signal,
+  }) => getGuildRules(guildId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!guildId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getGuildRules>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetGuildRulesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getGuildRules>>
+>;
+export type GetGuildRulesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get server rules configuration
+ */
+
+export function useGetGuildRules<
+  TData = Awaited<ReturnType<typeof getGuildRules>>,
+  TError = ErrorType<unknown>,
+>(
+  guildId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getGuildRules>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetGuildRulesQueryOptions(guildId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update server rules configuration
+ */
+export const getUpdateGuildRulesUrl = (guildId: string) => {
+  return `/api/guilds/${guildId}/rules`;
+};
+
+export const updateGuildRules = async (
+  guildId: string,
+  updateServerRulesBody: UpdateServerRulesBody,
+  options?: RequestInit,
+): Promise<ServerRules> => {
+  return customFetch<ServerRules>(getUpdateGuildRulesUrl(guildId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateServerRulesBody),
+  });
+};
+
+export const getUpdateGuildRulesMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateGuildRules>>,
+    TError,
+    { guildId: string; data: BodyType<UpdateServerRulesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateGuildRules>>,
+  TError,
+  { guildId: string; data: BodyType<UpdateServerRulesBody> },
+  TContext
+> => {
+  const mutationKey = ["updateGuildRules"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateGuildRules>>,
+    { guildId: string; data: BodyType<UpdateServerRulesBody> }
+  > = (props) => {
+    const { guildId, data } = props ?? {};
+
+    return updateGuildRules(guildId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateGuildRulesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateGuildRules>>
+>;
+export type UpdateGuildRulesMutationBody = BodyType<UpdateServerRulesBody>;
+export type UpdateGuildRulesMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update server rules configuration
+ */
+export const useUpdateGuildRules = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateGuildRules>>,
+    TError,
+    { guildId: string; data: BodyType<UpdateServerRulesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateGuildRules>>,
+  TError,
+  { guildId: string; data: BodyType<UpdateServerRulesBody> },
+  TContext
+> => {
+  return useMutation(getUpdateGuildRulesMutationOptions(options));
+};
+
+/**
+ * @summary Send or update the rules message in a channel
+ */
+export const getSendGuildRulesUrl = (guildId: string) => {
+  return `/api/guilds/${guildId}/rules/send`;
+};
+
+export const sendGuildRules = async (
+  guildId: string,
+  sendRulesBody: SendRulesBody,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getSendGuildRulesUrl(guildId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(sendRulesBody),
+  });
+};
+
+export const getSendGuildRulesMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendGuildRules>>,
+    TError,
+    { guildId: string; data: BodyType<SendRulesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendGuildRules>>,
+  TError,
+  { guildId: string; data: BodyType<SendRulesBody> },
+  TContext
+> => {
+  const mutationKey = ["sendGuildRules"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendGuildRules>>,
+    { guildId: string; data: BodyType<SendRulesBody> }
+  > = (props) => {
+    const { guildId, data } = props ?? {};
+
+    return sendGuildRules(guildId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendGuildRulesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendGuildRules>>
+>;
+export type SendGuildRulesMutationBody = BodyType<SendRulesBody>;
+export type SendGuildRulesMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Send or update the rules message in a channel
+ */
+export const useSendGuildRules = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendGuildRules>>,
+    TError,
+    { guildId: string; data: BodyType<SendRulesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendGuildRules>>,
+  TError,
+  { guildId: string; data: BodyType<SendRulesBody> },
+  TContext
+> => {
+  return useMutation(getSendGuildRulesMutationOptions(options));
 };
 
 /**

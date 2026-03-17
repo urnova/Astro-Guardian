@@ -203,6 +203,40 @@ export interface LogEntry {
   createdAt: string;
 }
 
+export interface DiscordRole {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface ServerRules {
+  id: number;
+  guildId: string;
+  channelId: string;
+  messageId?: string | null;
+  title: string;
+  description: string;
+  memberRoleId?: string | null;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateServerRulesBody {
+  channelId?: string;
+  title?: string;
+  description?: string;
+  memberRoleId?: string | null;
+  enabled?: boolean;
+}
+
+export interface SendRulesBody {
+  channelId: string;
+  title: string;
+  description: string;
+  memberRoleId?: string | null;
+}
+
 export interface SuccessResponse {
   success: boolean;
   message: string;

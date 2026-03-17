@@ -495,6 +495,95 @@ paths:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
 
+  /guilds/{guildId}/roles:
+    get:
+      operationId: getGuildRoles
+      tags: [guilds]
+      summary: Get guild roles
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DiscordRole"
+
+  /guilds/{guildId}/rules:
+    get:
+      operationId: getGuildRules
+      tags: [guilds]
+      summary: Get server rules configuration
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Server rules or null
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerRules"
+                nullable: true
+    put:
+      operationId: updateGuildRules
+      tags: [guilds]
+      summary: Update server rules configuration
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateServerRulesBody"
+      responses:
+        "200":
+          description: Updated rules
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerRules"
+
+  /guilds/{guildId}/rules/send:
+    post:
+      operationId: sendGuildRules
+      tags: [guilds]
+      summary: Send or update the rules message in a channel
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendRulesBody"
+      responses:
+        "200":
+          description: Sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
   /guilds/{guildId}/logs:
     get:
       operationId: getGuildLogs
@@ -939,6 +1028,75 @@ components:
           type: string
           format: date-time
       required: [id, guildId, action, createdAt]
+
+    DiscordRole:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+      required: [id, name, color]
+
+    ServerRules:
+      type: object
+      properties:
+        id:
+          type: integer
+        guildId:
+          type: string
+        channelId:
+          type: string
+        messageId:
+          type: string
+          nullable: true
+        title:
+          type: string
+        description:
+          type: string
+        memberRoleId:
+          type: string
+          nullable: true
+        enabled:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, guildId, channelId, title, description, enabled, createdAt, updatedAt]
+
+    UpdateServerRulesBody:
+      type: object
+      properties:
+        channelId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        memberRoleId:
+          type: string
+          nullable: true
+        enabled:
+          type: boolean
+
+    SendRulesBody:
+      type: object
+      properties:
+        channelId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        memberRoleId:
+          type: string
+          nullable: true
+      required: [channelId, title, description]
 
     SuccessResponse:
       type: object
