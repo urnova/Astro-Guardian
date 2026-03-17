@@ -122,7 +122,8 @@ export const dmCommand = {
     .addUserOption((o) => o.setName("membre").setDescription("Le destinataire").setRequired(true))
     .addStringOption((o) => o.setName("message").setDescription("Le message").setRequired(true)),
   async execute(interaction: ChatInputCommandInteraction) {
-    const member = interaction.options.getMember("membre") as GuildMember;
+    const member = interaction.options.getMember("membre") as GuildMember | null;
+    if (!member) return interaction.reply({ content: "❌ Membre introuvable.", ephemeral: true });
     const message = interaction.options.getString("message", true);
 
     const dmEmbed = new EmbedBuilder()
@@ -142,3 +143,4 @@ export const dmCommand = {
     }
   },
 };
+
