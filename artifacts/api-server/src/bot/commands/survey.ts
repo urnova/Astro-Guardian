@@ -56,6 +56,10 @@ export const surveyCommand = {
         return interaction.reply({ content: "❌ Aucune question valide.", ephemeral: true });
       }
 
+      if (questions.length > 5) {
+        return interaction.reply({ content: `❌ Discord limite les questionnaires à **5 questions maximum**. Tu en as fourni **${questions.length}**. Retire ${questions.length - 5} question(s) et réessaie.`, ephemeral: true });
+      }
+
       const [survey] = await db.insert(surveysTable).values({
         guildId: interaction.guildId!,
         title,
