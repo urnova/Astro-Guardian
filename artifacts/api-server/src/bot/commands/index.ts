@@ -21,6 +21,7 @@ import { serverinfoCommand, userinfoCommand, commandsListCommand } from "./info.
 import { giveawayCommand, giveawayEndCommand } from "./giveaway.js";
 import { surveyCommand } from "./survey.js";
 import { chatCommand } from "./chat.js";
+import { rulesCommand } from "./rules.js";
 
 export function registerCommands(client: Client): any[] {
   const commandList = [
@@ -56,6 +57,7 @@ export function registerCommands(client: Client): any[] {
     giveawayEndCommand,
     surveyCommand,
     chatCommand,
+    rulesCommand,
   ];
 
   for (const command of commandList) {

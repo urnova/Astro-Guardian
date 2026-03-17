@@ -1,5 +1,6 @@
 import { Client, Events, ChatInputCommandInteraction, ButtonInteraction, ModalSubmitInteraction } from "discord.js";
 import { handleSurveyButton, handleSurveyModal } from "../commands/survey.js";
+import { handleRulesButton } from "../commands/rules.js";
 import { db } from "@workspace/db";
 import { bannedWordsTable, guildConfigsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -13,7 +14,10 @@ export function registerEvents(client: Client): void {
         if (!command) return;
         await command.execute(interaction as ChatInputCommandInteraction);
       } else if (interaction.isButton()) {
-        await handleSurveyButton(interaction as ButtonInteraction);
+        const handledByRules = await handleRulesButton(interaction as ButtonInteraction);
+        if (!handledByRules) {
+          await handleSurveyButton(interaction as ButtonInteraction);
+        }
       } else if (interaction.isModalSubmit()) {
         await handleSurveyModal(interaction as ModalSubmitInteraction);
       }

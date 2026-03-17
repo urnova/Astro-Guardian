@@ -8,11 +8,12 @@ import {
   surveysTable,
   surveyResponsesTable,
   logsTable,
+  serverRulesTable,
 } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { getBotClient } from "../bot/index.js";
 import { getOrCreateConfig } from "../bot/lib/db.js";
-import { ChannelType, EmbedBuilder, TextChannel } from "discord.js";
+import { ChannelType, EmbedBuilder, TextChannel, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 
 const router = Router();
 
@@ -412,6 +413,105 @@ router.post("/:guildId/actions/say", async (req, res) => {
 
     await channel.send(message);
     res.json({ success: true, message: "Message envoyé" });
+  } catch {
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+router.get("/:guildId/rules", async (req, res) => {
+  try {
+    const rules = await db.select().from(serverRulesTable).where(eq(serverRulesTable.guildId, req.params.guildId)).limit(1);
+    res.json(rules[0] ?? null);
+  } catch {
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+router.put("/:guildId/rules", async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const existing = await db.select().from(serverRulesTable).where(eq(serverRulesTable.guildId, guildId)).limit(1);
+    if (existing.length > 0) {
+      const updated = await db.update(serverRulesTable).set({ ...req.body, updatedAt: new Date() }).where(eq(serverRulesTable.guildId, guildId)).returning();
+      res.json(updated[0]);
+    } else {
+      const created = await db.insert(serverRulesTable).values({ guildId, ...req.body }).returning();
+      res.json(created[0]);
+    }
+  } catch {
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+router.post("/:guildId/rules/send", async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const { channelId, title, description, memberRoleId } = req.body;
+    const client = getBotClient();
+    if (!client) return res.status(503).json({ error: "Bot non connecté" });
+
+    const guild = client.guilds.cache.get(guildId);
+    const channel = guild?.channels.cache.get(channelId) as TextChannel | undefined;
+    if (!channel) return res.status(404).json({ error: "Canal introuvable" });
+
+    const embed = new EmbedBuilder()
+      .setTitle(`📋 ${title}`)
+      .setDescription(description)
+      .setColor(0x00f0ff)
+      .setFooter({ text: "En cliquant sur ✅ J'accepte les règles, vous recevrez accès au serveur." })
+      .setTimestamp();
+
+    const button = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`rules_accept_${guildId}`)
+        .setLabel("✅  J'accepte les règles")
+        .setStyle(ButtonStyle.Success)
+    );
+
+    const existing = await db.select().from(serverRulesTable).where(eq(serverRulesTable.guildId, guildId)).limit(1);
+    let messageId: string | undefined;
+
+    if (existing.length > 0 && existing[0].messageId) {
+      try {
+        const oldChannel = guild?.channels.cache.get(existing[0].channelId) as TextChannel | undefined;
+        const oldMessage = await oldChannel?.messages.fetch(existing[0].messageId).catch(() => null);
+        if (oldMessage) {
+          await oldMessage.edit({ embeds: [embed], components: [button] });
+          messageId = oldMessage.id;
+        }
+      } catch {}
+    }
+
+    if (!messageId) {
+      const sent = await channel.send({ embeds: [embed], components: [button] });
+      messageId = sent.id;
+    }
+
+    const data = { channelId, title, description, memberRoleId: memberRoleId || null, messageId, enabled: true, updatedAt: new Date() };
+    if (existing.length > 0) {
+      await db.update(serverRulesTable).set(data).where(eq(serverRulesTable.guildId, guildId));
+    } else {
+      await db.insert(serverRulesTable).values({ guildId, ...data });
+    }
+
+    res.json({ success: true, messageId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+router.get("/:guildId/roles", async (req, res) => {
+  try {
+    const client = getBotClient();
+    if (!client) return res.status(503).json({ error: "Bot non connecté" });
+    const guild = client.guilds.cache.get(req.params.guildId);
+    if (!guild) return res.status(404).json({ error: "Serveur introuvable" });
+    const roles = guild.roles.cache
+      .filter(r => r.name !== "@everyone" && !r.managed)
+      .sort((a, b) => b.position - a.position)
+      .map(r => ({ id: r.id, name: r.name, color: r.hexColor }));
+    res.json(roles);
   } catch {
     res.status(500).json({ error: "Erreur serveur" });
   }

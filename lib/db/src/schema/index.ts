@@ -4,3 +4,4 @@ export * from "./bannedWords";
 export * from "./giveaways";
 export * from "./surveys";
 export * from "./logs";
+export * from "./serverRules";
