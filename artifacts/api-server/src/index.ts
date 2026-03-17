@@ -1,19 +1,41 @@
-import app from "./app";
+import { drizzle } from "drizzle-orm/node-postgres";
+import pg from "pg";
+import * as schema from "./schema";
 
-const rawPort = process.env["PORT"];
+const { Pool } = pg;
 
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
+let _pool: pg.Pool | null = null;
+let _db: ReturnType<typeof drizzle<typeof schema>> | null = null;
+
+function getPool(): pg.Pool {
+  if (!_pool) {
+    if (!process.env.DATABASE_URL) {
+      throw new Error(
+        "DATABASE_URL must be set. Did you forget to provision a database?",
+      );
+    }
+    _pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  }
+  return _pool;
 }
 
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
+export function getDb() {
+  if (!_db) {
+    _db = drizzle(getPool(), { schema });
+  }
+  return _db;
 }
 
-app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
+export const pool = new Proxy({} as pg.Pool, {
+  get(_target, prop) {
+    return (getPool() as any)[prop];
+  },
 });
+
+export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
+  get(_target, prop) {
+    return (getDb() as any)[prop];
+  },
+});
+
+export * from "./schema";
