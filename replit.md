@@ -16,6 +16,7 @@ Système complet de bot Discord + panel de contrôle web pour Astral Technologie
 - **API codegen**: Orval (from OpenAPI spec)
 - **Bot**: discord.js v14
 - **Frontend**: React + Vite (framer-motion, recharts, date-fns)
+- **Auth**: Discord OAuth2 (express-session)
 
 ## Structure
 
@@ -27,63 +28,86 @@ artifacts-monorepo/
 │   │       ├── bot/         # Discord.js bot
 │   │       │   ├── commands/ # Toutes les commandes slash
 │   │       │   ├── events/   # Handlers d'événements
-│   │       │   └── lib/      # Utilitaires DB
+│   │       │   └── lib/      # Utilitaires DB + addLog (envoie aussi sur Discord)
 │   │       └── routes/       # API REST routes
+│   │           ├── auth.ts   # OAuth2 Discord (/api/auth/discord, /callback, /me, /logout)
+│   │           ├── bot.ts    # Statut bot + guilds filtrées par session user
+│   │           └── guilds.ts # Actions par serveur
 │   └── astral-panel/        # Panel React sci-fi
-├── lib/
-│   ├── api-spec/            # OpenAPI spec + Orval codegen config
-│   ├── api-client-react/    # Generated React Query hooks
-│   ├── api-zod/             # Generated Zod schemas
-│   └── db/                  # Drizzle ORM schema + DB connection
-│       └── src/schema/
-│           ├── guildConfigs.ts
-│           ├── warns.ts
-│           ├── bannedWords.ts
-│           ├── giveaways.ts
-│           ├── surveys.ts
-│           └── logs.ts
-└── lib/api-spec/openapi.yaml  # Source de vérité API
+└── lib/
+    ├── api-spec/            # OpenAPI spec + Orval codegen config
+    ├── api-client-react/    # Generated React Query hooks
+    ├── api-zod/             # Generated Zod schemas
+    └── db/                  # Drizzle ORM schema + DB connection
+        └── src/schema/
+            ├── guildConfigs.ts
+            ├── warns.ts
+            ├── bannedWords.ts
+            ├── giveaways.ts
+            ├── surveys.ts
+            └── logs.ts
 ```
+
+## Authentification Discord OAuth2
+
+### Flow
+1. L'utilisateur clique "Se connecter avec Discord"
+2. Redirigé vers `/api/auth/discord` → Discord OAuth2
+3. Discord redirige vers `/api/auth/callback` avec le code
+4. Le serveur échange le code, récupère les guilds de l'utilisateur
+5. Session stockée côté serveur, cookie sécurisé
+6. Seuls les serveurs où l'utilisateur est **Administrateur** ET où le bot est présent s'affichent
+
+### Configuration requise (Discord Developer Portal)
+- Aller sur https://discord.com/developers/applications
+- Sélectionner l'application du bot
+- Aller dans **OAuth2** → **Redirects**
+- Ajouter : `https://VOTRE_DOMAINE/api/auth/callback`
 
 ## Bot Discord — Commandes
 
-### 🔨 Modération
+### ⚡ Modération
 - `/kick` `/ban` `/unban` `/mute` `/unmute` `/clear`
 - `/warn` `/warns` `/unwarn` `/massban`
 
 ### 🚨 Sécurité
-- `/breach` — Confiner le serveur (brèche)
-- `/unbreach` — Sortir de brèche
+- `/breach` — Confinement total du serveur
+- `/unbreach` — Lever le confinement
 - `/nuke` — Détruire et recréer un canal
 - `/antiraid` `/automod` `/addword` `/removeword` `/bannedwords`
 
 ### 🔧 Système
 - `/maintenance` `/maintenance_off`
-- `/setlogchannel`
+- `/setlogchannel` — Définir le canal de logs Discord
 
 ### 📢 Messagerie
 - `/say` `/embed` `/announce` `/dm`
 
 ### 🎉 Giveaway
-- `/giveaway create` — Créer avec timer auto
-- `/giveaway list` `/giveaway_end`
+- `/giveaway create` `/giveaway list` `/giveaway_end`
 
-### 📝 Questionnaire
-- `/survey create` — Questions séparées par |, canal réponses configurable
-- `/survey list`
+### 📋 Questionnaire
+- `/survey create` `/survey list`
 
-### ℹ️ Info
-- `/serverinfo` `/userinfo` `/commands`
+### ℹ️ Info & Aide
+- `/serverinfo` `/userinfo`
+- `/help` — Centre de commandement (liste toutes les commandes)
 
-### 🤖 Chat
-- `/chat` — Parler avec l'IA ASTRAL-BOT
+### 🤖 Chat IA
+- `/chat` — Dialoguer avec l'IA ASTRAL-BOT
+
+## Système de logs
+
+Les logs sont enregistrés en base de données ET envoyés automatiquement dans le canal Discord configuré via `/setlogchannel`.
+
+Actions loggées : KICK, BAN, UNBAN, MUTE, UNMUTE, WARN, CLEAR, NUKE, MASSBAN, BREACH_ON/OFF, MAINTENANCE_ON/OFF, AUTOMOD_DELETE, MEMBER_JOIN/LEAVE.
 
 ## Panel Web (astral-panel)
 
-- Dashboard: statut bot, liste des serveurs
-- Page serveur avec tabs: overview, config, modération, sécurité, messagerie, giveaways, questionnaires, logs
+- Connexion via compte Discord (OAuth2) — pas de mot de passe
+- Dashboard : statut bot + liste des serveurs où l'utilisateur est admin
+- Page serveur avec tabs : overview, config, modération, sécurité, messagerie, giveaways, questionnaires, règles, logs
 - Toutes les actions peuvent être déclenchées depuis le panel
-- Configuration par serveur (isolé, non partagé entre serveurs)
 
 ## Architecture DB (par serveur)
 
@@ -92,12 +116,14 @@ artifacts-monorepo/
 - `banned_words` — Mots bannis par serveur
 - `giveaways` — Giveaways par serveur
 - `surveys` + `survey_responses` — Questionnaires et réponses
-- `logs` — Historique des actions
+- `logs` — Historique des actions (envoyé aussi sur Discord)
 
 ## Secrets nécessaires
 
 - `DISCORD_TOKEN` — Token du bot
 - `DISCORD_CLIENT_ID` — ID de l'application Discord
+- `DISCORD_CLIENT_SECRET` — Secret OAuth2 de l'application Discord
+- `SESSION_SECRET` — Secret pour les sessions Express
 - `DATABASE_URL` — Fourni automatiquement par Replit
 
 ## Développement
