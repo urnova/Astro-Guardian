@@ -11,16 +11,17 @@ import { eq } from "drizzle-orm";
 import { getOrCreateConfig, addLog } from "../lib/db.js";
 
 const adminPerm = PermissionFlagsBits.Administrator;
+const FOOTER = "⬡ ASTRAL TECHNOLOGIE — NEXUS v2.0";
 
 export const maintenanceCommand = {
   data: new SlashCommandBuilder()
     .setName("maintenance")
-    .setDescription("🔧 Activer le mode maintenance sur le serveur")
+    .setDescription("🔧 Activer le protocole de maintenance système")
     .setDefaultMemberPermissions(adminPerm)
-    .addStringOption((o) => o.setName("raison").setDescription("Raison de la maintenance").setRequired(false)),
+    .addStringOption((o) => o.setName("raison").setDescription("Motif de la maintenance").setRequired(false)),
   async execute(interaction: ChatInputCommandInteraction) {
-    const reason = interaction.options.getString("raison") ?? "Maintenance technique";
-    await interaction.reply({ content: "🔧 **INITIALISATION DU MODE MAINTENANCE...**", ephemeral: true });
+    const reason = interaction.options.getString("raison") ?? "Maintenance technique programmée";
+    await interaction.deferReply({ ephemeral: true });
 
     await getOrCreateConfig(interaction.guildId!);
     await db.update(guildConfigsTable)
@@ -28,23 +29,34 @@ export const maintenanceCommand = {
       .where(eq(guildConfigsTable.guildId, interaction.guildId!));
 
     const embed = new EmbedBuilder()
-      .setTitle("🚧 ⚠️ MAINTENANCE EN COURS ⚠️ 🚧")
-      .setDescription(`\`\`\`diff\n- SERVEUR EN MAINTENANCE TECHNIQUE\n- ACCÈS UTILISATEUR SUSPENDU\n- INTERVENTIONS ADMINISTRATIVES EN COURS\n\`\`\`\n\n**🔧 RAISON:** \`${reason}\`\n**⚙️ STATUT:** \`MAINTENANCE ACTIVE\`\n**⏰ DÉBUT:** <t:${Math.floor(Date.now() / 1000)}:F>\n**👨‍💻 TECHNICIEN:** ${interaction.user}`)
+      .setTitle("🔧 ⬡ PROTOCOLE MAINTENANCE — SYSTÈME SUSPENDU ⬡ 🔧")
       .setColor(0xffa500)
-      .addFields(
-        { name: "⚙️ OPÉRATIONS EN COURS", value: "```yaml\n🔧 Maintenance système active\n🛠️ Interventions techniques\n🔄 Optimisations serveur\n⏸️ Communications suspendues```", inline: false },
-        { name: "🚫 RESTRICTIONS ACTIVES", value: "```css\n[BLOQUÉ] Messages utilisateurs\n[AUTORISÉ] Communications admin\n[ACTIF] Surveillance système```", inline: false },
+      .setDescription(
+        `\`\`\`diff\n- ⬡ NŒUD EN MAINTENANCE TECHNIQUE\n- COMMUNICATIONS UTILISATEURS SUSPENDUES\n- INTERVENTIONS ADMINISTRATIVES EN COURS\n- ACCÈS RESTREINT AUX OPÉRATEURS ACCRÉDITÉS\n\`\`\``
       )
-      .setFooter({ text: "🔧 SYSTÈME ASTRAL TECHNOLOGIE | MAINTENANCE ACTIVE" })
+      .addFields(
+        {
+          name: "📋 RAPPORT TECHNIQUE",
+          value: `\`\`\`yaml\nMotif     : ${reason}\nInitié par: ${interaction.user.username}\nHeure     : ${new Date().toLocaleTimeString("fr-FR")}\nStatut    : MAINTENANCE ACTIVE\`\`\``,
+          inline: false,
+        },
+        {
+          name: "🔒 RESTRICTIONS SYSTÈME",
+          value: "```css\n[BLOQUÉ] Transmissions utilisateurs\n[ACTIF] Accès administrateur\n[EN COURS] Opérations techniques\n[SURVEILLÉ] Intégrité du réseau```",
+          inline: false,
+        },
+      )
+      .setFooter({ text: `${FOOTER} | MAINTENANCE ACTIVE` })
       .setTimestamp();
 
+    let notified = 0;
     for (const channel of interaction.guild!.channels.cache.values()) {
       if (channel instanceof TextChannel) {
-        try { await channel.send({ embeds: [embed] }); } catch {}
+        try { await channel.send({ embeds: [embed] }); notified++; } catch {}
       }
     }
 
-    await interaction.followUp({ content: "✅ **MODE MAINTENANCE ACTIVÉ**", ephemeral: true });
+    await interaction.editReply({ content: `✅ **PROTOCOLE MAINTENANCE ACTIVÉ** — ${notified} canal(aux) notifié(s)` });
     await addLog({ guildId: interaction.guildId!, action: "MAINTENANCE_ON", moderatorId: interaction.user.id, moderatorName: interaction.user.username, details: reason });
   },
 };
@@ -52,10 +64,10 @@ export const maintenanceCommand = {
 export const maintenanceOffCommand = {
   data: new SlashCommandBuilder()
     .setName("maintenance_off")
-    .setDescription("✅ Désactiver le mode maintenance")
+    .setDescription("✅ Terminer la maintenance — Remettre le système en ligne")
     .setDefaultMemberPermissions(adminPerm),
   async execute(interaction: ChatInputCommandInteraction) {
-    await interaction.reply({ content: "✅ **FINALISATION DE LA MAINTENANCE...**", ephemeral: true });
+    await interaction.deferReply({ ephemeral: true });
 
     await getOrCreateConfig(interaction.guildId!);
     await db.update(guildConfigsTable)
@@ -63,23 +75,34 @@ export const maintenanceOffCommand = {
       .where(eq(guildConfigsTable.guildId, interaction.guildId!));
 
     const embed = new EmbedBuilder()
-      .setTitle("🎉 ✨ MAINTENANCE TERMINÉE ✨ 🎉")
-      .setDescription(`\`\`\`diff\n+ MAINTENANCE TECHNIQUE COMPLÉTÉE\n+ SERVEUR PLEINEMENT OPÉRATIONNEL\n+ COMMUNICATIONS RÉTABLIES\n\`\`\`\n\n**✅ STATUT:** \`OPÉRATIONNEL\`\n**⏰ FIN:** <t:${Math.floor(Date.now() / 1000)}:F>\n**👨‍💻 TECHNICIEN:** ${interaction.user}`)
+      .setTitle("⬡ ✅ MAINTENANCE COMPLÈTE — NEXUS PLEINEMENT OPÉRATIONNEL ✅ ⬡")
       .setColor(0x00ff66)
-      .addFields(
-        { name: "🎊 MAINTENANCE RÉUSSIE", value: "```yaml\n✅ Système entièrement opérationnel\n✅ Communications restaurées\n✅ Optimisations appliquées\n✅ Serveur stabilisé```", inline: false },
-        { name: "📢 ANNONCE", value: "```fix\nLe serveur est maintenant pleinement fonctionnel !\nMerci de votre patience pendant la maintenance.```", inline: false },
+      .setDescription(
+        `\`\`\`diff\n+ MAINTENANCE TECHNIQUE ACCOMPLIE\n+ NŒUD PLEINEMENT OPÉRATIONNEL\n+ COMMUNICATIONS RÉTABLIES\n+ ACCÈS COMPLET RESTAURÉ\n\`\`\``
       )
-      .setFooter({ text: "✅ SYSTÈME ASTRAL TECHNOLOGIE | SERVEUR OPÉRATIONNEL" })
+      .addFields(
+        {
+          name: "📊 RAPPORT DE FIN DE MAINTENANCE",
+          value: `\`\`\`yaml\nComplété par : ${interaction.user.username}\nHeure        : ${new Date().toLocaleTimeString("fr-FR")}\nDurée        : Opération terminée\nStatut       : SYSTÈME NOMINAL\`\`\``,
+          inline: false,
+        },
+        {
+          name: "✅ SYSTÈMES EN LIGNE",
+          value: "```diff\n+ Communications rétablies\n+ Permissions restaurées\n+ Optimisations appliquées\n+ Surveillance active```",
+          inline: false,
+        },
+      )
+      .setFooter({ text: `${FOOTER} | SERVEUR OPÉRATIONNEL` })
       .setTimestamp();
 
+    let notified = 0;
     for (const channel of interaction.guild!.channels.cache.values()) {
       if (channel instanceof TextChannel) {
-        try { await channel.send({ embeds: [embed] }); } catch {}
+        try { await channel.send({ embeds: [embed] }); notified++; } catch {}
       }
     }
 
-    await interaction.followUp({ content: "✅ **MAINTENANCE TERMINÉE — Serveur opérationnel**", ephemeral: true });
+    await interaction.editReply({ content: `✅ **MAINTENANCE TERMINÉE** — ${notified} canal(aux) notifié(s)` });
     await addLog({ guildId: interaction.guildId!, action: "MAINTENANCE_OFF", moderatorId: interaction.user.id, moderatorName: interaction.user.username });
   },
 };
@@ -87,9 +110,9 @@ export const maintenanceOffCommand = {
 export const setlogchannelCommand = {
   data: new SlashCommandBuilder()
     .setName("setlogchannel")
-    .setDescription("📝 Définir le canal de logs")
+    .setDescription("📡 Configurer le canal de transmission des journaux")
     .setDefaultMemberPermissions(adminPerm)
-    .addChannelOption((o) => o.setName("canal").setDescription("Canal de logs").setRequired(true)),
+    .addChannelOption((o) => o.setName("canal").setDescription("Canal de réception des logs").setRequired(true)),
   async execute(interaction: ChatInputCommandInteraction) {
     const channel = interaction.options.getChannel("canal", true);
     await getOrCreateConfig(interaction.guildId!);
@@ -98,9 +121,14 @@ export const setlogchannelCommand = {
       .where(eq(guildConfigsTable.guildId, interaction.guildId!));
 
     const embed = new EmbedBuilder()
-      .setTitle("📝 Canal de logs défini")
-      .setDescription(`Les logs seront envoyés dans <#${channel.id}>`)
-      .setColor(0x0099ff)
+      .setTitle("📡 CANAL DE JOURNAL CONFIGURÉ")
+      .setColor(0x00f0ff)
+      .setDescription(`\`\`\`diff\n+ LIAISON DE JOURNAL ÉTABLIE\n+ TRANSMISSIONS REDIRIGÉES VERS LA CIBLE\n\`\`\``)
+      .addFields(
+        { name: "📡 CANAL CIBLE", value: `<#${channel.id}>`, inline: true },
+        { name: "✅ STATUT", value: "`ACTIF`", inline: true },
+      )
+      .setFooter({ text: FOOTER })
       .setTimestamp();
     await interaction.reply({ embeds: [embed] });
   },

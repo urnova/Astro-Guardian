@@ -1,9 +1,15 @@
 import { Router } from "express";
+import type { Request, Response } from "express";
 import { getBotClient } from "../bot/index.js";
+import { db } from "@workspace/db";
+import { guildConfigsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 const router = Router();
 
-router.get("/status", (_req, res) => {
+const ADMIN_PERMISSION = BigInt(0x8);
+
+router.get("/status", (_req: Request, res: Response) => {
   const client = getBotClient();
   if (!client || !client.isReady()) {
     return res.json({
@@ -26,11 +32,13 @@ router.get("/status", (_req, res) => {
   });
 });
 
-router.get("/guilds", (_req, res) => {
+router.get("/guilds", async (req: Request, res: Response) => {
   const client = getBotClient();
   if (!client || !client.isReady()) return res.json([]);
 
-  const guilds = client.guilds.cache.map((g) => ({
+  const sessionGuilds = req.session?.guilds;
+
+  let botGuilds = client.guilds.cache.map((g) => ({
     id: g.id,
     name: g.name,
     icon: g.iconURL(),
@@ -39,7 +47,27 @@ router.get("/guilds", (_req, res) => {
     breachMode: false,
   }));
 
-  res.json(guilds);
+  if (sessionGuilds && sessionGuilds.length > 0) {
+    const adminGuildIds = new Set(
+      sessionGuilds
+        .filter((g) => (BigInt(g.permissions) & ADMIN_PERMISSION) === ADMIN_PERMISSION)
+        .map((g) => g.id)
+    );
+    botGuilds = botGuilds.filter((g) => adminGuildIds.has(g.id));
+  }
+
+  try {
+    const configs = await db.select().from(guildConfigsTable);
+    const configMap = new Map(configs.map((c) => [c.guildId, c]));
+
+    botGuilds = botGuilds.map((g) => ({
+      ...g,
+      maintenanceMode: configMap.get(g.id)?.maintenanceMode ?? false,
+      breachMode: configMap.get(g.id)?.breachMode ?? false,
+    }));
+  } catch {}
+
+  res.json(botGuilds);
 });
 
 export default router;

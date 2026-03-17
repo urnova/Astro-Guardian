@@ -3,7 +3,6 @@ import {
   PermissionFlagsBits,
   EmbedBuilder,
   ChatInputCommandInteraction,
-  GuildMember,
   TextChannel,
 } from "discord.js";
 import { db } from "@workspace/db";
@@ -12,16 +11,17 @@ import { eq, and } from "drizzle-orm";
 import { getOrCreateConfig, addLog } from "../lib/db.js";
 
 const adminPerm = PermissionFlagsBits.Administrator;
+const FOOTER = "⬡ ASTRAL TECHNOLOGIE — NEXUS v2.0";
 
 export const lockdownCommand = {
   data: new SlashCommandBuilder()
     .setName("breach")
-    .setDescription("🚨 Confiner le serveur — BRÈCHE DE SÉCURITÉ")
+    .setDescription("🚨 ALERTE — Activer le protocole de confinement total")
     .setDefaultMemberPermissions(adminPerm)
-    .addStringOption((o) => o.setName("raison").setDescription("Raison du confinement").setRequired(false)),
+    .addStringOption((o) => o.setName("raison").setDescription("Motif de la brèche").setRequired(false)),
   async execute(interaction: ChatInputCommandInteraction) {
-    const reason = interaction.options.getString("raison") ?? "Urgence sécuritaire";
-    await interaction.reply({ content: "🔒 **INITIALISATION DU PROTOCOLE BRÈCHE...**", ephemeral: true });
+    const reason = interaction.options.getString("raison") ?? "Urgence sécuritaire détectée";
+    await interaction.deferReply({ ephemeral: true });
 
     try {
       await getOrCreateConfig(interaction.guildId!);
@@ -30,15 +30,24 @@ export const lockdownCommand = {
         .where(eq(guildConfigsTable.guildId, interaction.guildId!));
 
       const embed = new EmbedBuilder()
-        .setTitle("🚨 ⚠️ ALERTE — BRÈCHE DE SÉCURITÉ ⚠️ 🚨")
-        .setDescription(`\`\`\`diff\n- SERVEUR EN CONFINEMENT TOTAL\n- ACCÈS COMMUNICATION SUSPENDU\n- PROTOCOLES DE DÉFENSE ACTIVÉS\n\`\`\`\n\n**📋 RAISON:** \`${reason}\`\n**🔐 STATUT:** \`CONFINÉ\`\n**⏰ HEURE:** <t:${Math.floor(Date.now() / 1000)}:F>\n**👤 OFFICIER:** ${interaction.user}`)
+        .setTitle("🚨 ⬡ ALERTE CRITIQUE — BRÈCHE DE SÉCURITÉ DÉTECTÉE ⬡ 🚨")
         .setColor(0xff0000)
-        .addFields({
-          name: "🛡️ PROTOCOLE DE SÉCURITÉ ACTIVÉ",
-          value: "```yaml\n✅ Communications bloquées\n✅ Permissions révoquées\n✅ Surveillance active\n✅ Mode défensif engagé```",
-          inline: false,
-        })
-        .setFooter({ text: "🔒 SYSTÈME DE SÉCURITÉ ASTRAL TECHNOLOGIE | BRÈCHE CONFINÉE" })
+        .setDescription(
+          `\`\`\`diff\n- ⬡ NŒUD EN CONFINEMENT TOTAL\n- TRANSMISSIONS UTILISATEURS COUPÉES\n- PROTOCOLES DÉFENSIFS ENGAGÉS\n- SURVEILLANCE MAXIMALE ACTIVE\n\`\`\``
+        )
+        .addFields(
+          {
+            name: "🔴 RAPPORT DE BRÈCHE",
+            value: `\`\`\`yaml\nMotif     : ${reason}\nOfficier  : ${interaction.user.username}\nHeure     : ${new Date().toLocaleTimeString("fr-FR")}\nStatut    : CONFINEMENT ACTIF\`\`\``,
+            inline: false,
+          },
+          {
+            name: "🛡️ PROTOCOLES ENGAGÉS",
+            value: "```css\n[VERROUILLÉ] Communications réseau\n[ACTIF] Surveillance renforcée\n[ENGAGÉ] Mode défensif maximal\n[BLOQUÉ] Accès utilisateurs```",
+            inline: false,
+          },
+        )
+        .setFooter({ text: `${FOOTER} | ⚠️ CONFINEMENT ACTIF` })
         .setTimestamp();
 
       let locked = 0;
@@ -52,10 +61,10 @@ export const lockdownCommand = {
         }
       }
 
-      await interaction.followUp({ content: `✅ **BRÈCHE CONFINÉE** — ${locked} canaux verrouillés`, ephemeral: true });
+      await interaction.editReply({ content: `🚨 **BRÈCHE CONFINÉE** — ${locked} canal(aux) verrouillé(s)` });
       await addLog({ guildId: interaction.guildId!, action: "BREACH_ON", moderatorId: interaction.user.id, moderatorName: interaction.user.username, details: reason });
-    } catch (e) {
-      await interaction.followUp({ content: "❌ Erreur lors du confinement.", ephemeral: true });
+    } catch {
+      await interaction.editReply({ content: "❌ Erreur lors du confinement. Vérifiez les permissions." });
     }
   },
 };
@@ -63,10 +72,10 @@ export const lockdownCommand = {
 export const unlockCommand = {
   data: new SlashCommandBuilder()
     .setName("unbreach")
-    .setDescription("🔓 Sortir de brèche — rétablir le serveur")
+    .setDescription("🔓 Lever le confinement — Rétablir le réseau")
     .setDefaultMemberPermissions(adminPerm),
   async execute(interaction: ChatInputCommandInteraction) {
-    await interaction.reply({ content: "🔓 **SORTIE DE BRÈCHE EN COURS...**", ephemeral: true });
+    await interaction.deferReply({ ephemeral: true });
 
     try {
       await getOrCreateConfig(interaction.guildId!);
@@ -75,15 +84,24 @@ export const unlockCommand = {
         .where(eq(guildConfigsTable.guildId, interaction.guildId!));
 
       const embed = new EmbedBuilder()
-        .setTitle("🎉 ✨ BRÈCHE RÉSOLUE — SERVEUR OPÉRATIONNEL ✨ 🎉")
-        .setDescription(`\`\`\`diff\n+ CONFINEMENT LEVÉ AVEC SUCCÈS\n+ COMMUNICATIONS RÉTABLIES\n+ ACCÈS TOTAL RESTAURÉ\n\`\`\`\n\n**🔓 STATUT:** \`OPÉRATIONNEL\`\n**⏰ HEURE:** <t:${Math.floor(Date.now() / 1000)}:F>\n**👤 OFFICIER:** ${interaction.user}`)
+        .setTitle("⬡ ✅ CONFINEMENT LEVÉ — NEXUS RÉTABLI ✅ ⬡")
         .setColor(0x00ff66)
-        .addFields({
-          name: "🎊 SYSTÈME RÉTABLI",
-          value: "```yaml\n✅ Communications rétablies\n✅ Permissions restaurées\n✅ Mode normal activé\n✅ Activité autorisée```",
-          inline: false,
-        })
-        .setFooter({ text: "🔓 SYSTÈME DE SÉCURITÉ ASTRAL TECHNOLOGIE | SERVEUR OPÉRATIONNEL" })
+        .setDescription(
+          `\`\`\`diff\n+ PROTOCOLE DE CONFINEMENT DÉSACTIVÉ\n+ COMMUNICATIONS RÉTABLIES\n+ ACCÈS RÉSEAU RESTAURÉ\n+ NŒUD PLEINEMENT OPÉRATIONNEL\n\`\`\``
+        )
+        .addFields(
+          {
+            name: "✅ RAPPORT DE RÉTABLISSEMENT",
+            value: `\`\`\`yaml\nAutorisé par : ${interaction.user.username}\nHeure        : ${new Date().toLocaleTimeString("fr-FR")}\nStatut       : OPÉRATIONNEL\`\`\``,
+            inline: false,
+          },
+          {
+            name: "🎊 SYSTÈMES RÉTABLIS",
+            value: "```diff\n+ Communications rétablies\n+ Permissions restaurées\n+ Surveillance réduite\n+ Accès utilisateurs normalisé```",
+            inline: false,
+          },
+        )
+        .setFooter({ text: `${FOOTER} | SÉCURITÉ RÉTABLIE` })
         .setTimestamp();
 
       let unlocked = 0;
@@ -97,10 +115,10 @@ export const unlockCommand = {
         }
       }
 
-      await interaction.followUp({ content: `✅ **BRÈCHE LEVÉE** — ${unlocked} canaux rétablis`, ephemeral: true });
+      await interaction.editReply({ content: `✅ **CONFINEMENT LEVÉ** — ${unlocked} canal(aux) rétabli(s)` });
       await addLog({ guildId: interaction.guildId!, action: "BREACH_OFF", moderatorId: interaction.user.id, moderatorName: interaction.user.username });
     } catch {
-      await interaction.followUp({ content: "❌ Erreur.", ephemeral: true });
+      await interaction.editReply({ content: "❌ Erreur lors du rétablissement." });
     }
   },
 };
@@ -108,7 +126,7 @@ export const unlockCommand = {
 export const nukeCommand = {
   data: new SlashCommandBuilder()
     .setName("nuke")
-    .setDescription("💥 Supprimer et recréer le canal actuel")
+    .setDescription("💥 PROTOCOLE NUKE — Purification totale du canal")
     .setDefaultMemberPermissions(adminPerm),
   async execute(interaction: ChatInputCommandInteraction) {
     const channel = interaction.channel as TextChannel;
@@ -116,13 +134,20 @@ export const nukeCommand = {
     const channelPosition = channel.position;
     const channelCategory = channel.parent;
 
-    await interaction.reply({ content: "💥 **DÉTONATION IMMINENTE...**", ephemeral: true });
+    await interaction.reply({ content: "💥 **PROTOCOLE NUKE INITIALISÉ — COMPTE À REBOURS ACTIVÉ**", ephemeral: true });
 
     const countdownEmbed = new EmbedBuilder()
-      .setTitle("💣 ⚠️ ALERTE DÉTONATION ⚠️ 💣")
-      .setDescription("```diff\n- DESTRUCTION IMMINENTE DU CANAL\n- ÉVACUATION EN COURS\n```")
+      .setTitle("💣 ⬡ ALERTE — DÉTONATION IMMINENTE ⬡ 💣")
       .setColor(0xff4500)
-      .addFields({ name: "⚡ COMPTE À REBOURS", value: "```css\n[3] INITIALISATION...\n[2] CHARGEMENT...\n[1] DÉTONATION...\n[0] BOOM! 💥```" });
+      .setDescription(
+        `\`\`\`diff\n- ⬡ PROTOCOLE DE PURIFICATION ACTIVÉ\n- DESTRUCTION DU CANAL IMMINENTE\n- ÉVACUATION DES DONNÉES EN COURS\n\`\`\``
+      )
+      .addFields({
+        name: "⏱️ SÉQUENCE DE DÉTONATION",
+        value: "```fix\n[3] Systèmes d'armement chargés...\n[2] Coordonnées verrouillées...\n[1] Détonation imminente...\n[0] ██████████ 💥 BOOM\n```",
+      })
+      .setFooter({ text: `${FOOTER} | ⚠️ PURIFICATION EN COURS` })
+      .setTimestamp();
 
     await channel.send({ embeds: [countdownEmbed] });
     await new Promise((r) => setTimeout(r, 3000));
@@ -137,11 +162,21 @@ export const nukeCommand = {
       }) as TextChannel;
 
       const nukeEmbed = new EmbedBuilder()
-        .setTitle("🌋 💥 DÉTONATION RÉUSSIE 💥 🌋")
-        .setDescription(`\`\`\`diff\n+ CANAL COMPLÈTEMENT PURIFIÉ\n+ DESTRUCTION TOTALE ACCOMPLIE\n\`\`\`\n\n**💣 CANAL:** \`#${channelName}\`\n**⏰ HEURE:** <t:${Math.floor(Date.now() / 1000)}:F>`)
-        .setColor(0xff0000)
-        .addFields({ name: "☢️ RAPPORT", value: "```yaml\n✅ Messages éliminés: TOUS\n✅ Historique effacé: COMPLET\n✅ Canal purifié: 100%```" })
-        .setFooter({ text: "💥 SYSTÈME DE PURIFICATION ASTRAL | NUKE RÉUSSI" });
+        .setTitle("🌋 ⬡ DÉTONATION RÉUSSIE — CANAL PURIFIÉ ⬡ 🌋")
+        .setColor(0xff4500)
+        .setDescription(
+          `\`\`\`diff\n+ CANAL COMPLÈTEMENT PURIFIÉ\n+ HISTORIQUE EFFACÉ À 100%\n+ NOUVEAU NŒUD INITIALISÉ\n\`\`\``
+        )
+        .addFields(
+          { name: "💥 CANAL PURIFIÉ", value: `\`#${channelName}\``, inline: true },
+          { name: "☢️ STATUT", value: "`PURIFICATION TOTALE`", inline: true },
+          {
+            name: "📊 RAPPORT D'OPÉRATION",
+            value: "```yaml\nMessages éliminés : TOUS\nHistorique effacé : 100%\nCanal purifié     : OUI\nNœud recréé       : OUI```",
+          },
+        )
+        .setFooter({ text: `${FOOTER} | 💥 NUKE RÉUSSI` })
+        .setTimestamp();
 
       await newChannel.send({ embeds: [nukeEmbed] });
       await addLog({ guildId: interaction.guildId!, action: "NUKE", targetName: channelName, moderatorId: interaction.user.id, moderatorName: interaction.user.username });
@@ -152,77 +187,106 @@ export const nukeCommand = {
 export const massbanCommand = {
   data: new SlashCommandBuilder()
     .setName("massban")
-    .setDescription("Bannir plusieurs utilisateurs par leurs IDs")
+    .setDescription("☠️ PROTOCOLE PURGE — Bannir plusieurs agents simultanément")
     .setDefaultMemberPermissions(adminPerm)
-    .addStringOption((o) => o.setName("ids").setDescription("IDs séparés par des espaces").setRequired(true))
-    .addStringOption((o) => o.setName("raison").setDescription("Raison").setRequired(false)),
+    .addStringOption((o) => o.setName("ids").setDescription("IDs Discord séparés par des espaces").setRequired(true))
+    .addStringOption((o) => o.setName("raison").setDescription("Motif de la purge").setRequired(false)),
   async execute(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply();
-    const ids = interaction.options.getString("ids", true).split(/\s+/);
-    const reason = interaction.options.getString("raison") ?? "Ban de masse";
+    const ids = interaction.options.getString("ids", true).split(/\s+/).filter(Boolean);
+    const reason = interaction.options.getString("raison") ?? "Purge de masse autorisée";
     let count = 0;
+    let failed = 0;
+
     for (const id of ids) {
       try {
         await interaction.guild!.members.ban(id, { reason });
         count++;
-      } catch {}
+      } catch {
+        failed++;
+      }
     }
+
     const embed = new EmbedBuilder()
-      .setTitle("🔨 Ban de masse")
-      .setDescription(`**${count}** utilisateurs bannis`)
+      .setTitle("☠️ ⬡ PROTOCOLE PURGE — EXÉCUTION TERMINÉE ⬡ ☠️")
       .setColor(0xff0000)
+      .setDescription(
+        `\`\`\`diff\n- PURGE DE MASSE EXÉCUTÉE\n- ${count} AGENT(S) BANNI(S) DU RÉSEAU\n${failed > 0 ? `- ${failed} ÉCHEC(S) ENREGISTRÉ(S)\n` : ""}\`\`\``
+      )
+      .addFields(
+        { name: "☠️ BANNIS", value: `\`${count}\``, inline: true },
+        { name: "⚠️ ÉCHECS", value: `\`${failed}\``, inline: true },
+        { name: "📋 MOTIF", value: `\`${reason}\``, inline: false },
+      )
+      .setFooter({ text: FOOTER })
       .setTimestamp();
+
     await interaction.editReply({ embeds: [embed] });
-    await addLog({ guildId: interaction.guildId!, action: "MASSBAN", moderatorId: interaction.user.id, moderatorName: interaction.user.username, details: `${count} utilisateurs` });
+    await addLog({ guildId: interaction.guildId!, action: "MASSBAN", moderatorId: interaction.user.id, moderatorName: interaction.user.username, details: `${count} agents bannis — ${reason}` });
   },
 };
 
 export const antiraidCommand = {
   data: new SlashCommandBuilder()
     .setName("antiraid")
-    .setDescription("Activer/désactiver la protection anti-raid")
+    .setDescription("🛡️ Configurer le bouclier anti-raid")
     .setDefaultMemberPermissions(adminPerm)
-    .addBooleanOption((o) => o.setName("activer").setDescription("Activer ou désactiver").setRequired(true)),
+    .addBooleanOption((o) => o.setName("activer").setDescription("Activer ou désactiver le bouclier").setRequired(true)),
   async execute(interaction: ChatInputCommandInteraction) {
     const enabled = interaction.options.getBoolean("activer", true);
     await getOrCreateConfig(interaction.guildId!);
     await db.update(guildConfigsTable).set({ antiRaidEnabled: enabled }).where(eq(guildConfigsTable.guildId, interaction.guildId!));
 
     const embed = new EmbedBuilder()
-      .setTitle("🛡️ Protection Anti-Raid")
-      .setDescription(`Protection **${enabled ? "activée" : "désactivée"}**`)
+      .setTitle(`🛡️ BOUCLIER ANTI-RAID — ${enabled ? "ACTIVÉ" : "DÉSACTIVÉ"}`)
       .setColor(enabled ? 0x00ff00 : 0xff0000)
+      .setDescription(
+        `\`\`\`${enabled ? "diff\n+ PROTECTION ANTI-RAID ENGAGÉE\n+ FLUX D'ENTRÉE SURVEILLÉ\n+ MENACES AUTOMATIQUEMENT BLOQUÉES" : "diff\n- PROTECTION ANTI-RAID DÉSACTIVÉE\n- SURVEILLANCE ALLÉGÉE"}\n\`\`\``
+      )
+      .addFields({ name: "🔰 STATUT", value: `\`${enabled ? "BOUCLIER ACTIF" : "BOUCLIER INACTIF"}\``, inline: true })
+      .setFooter({ text: FOOTER })
       .setTimestamp();
+
     await interaction.reply({ embeds: [embed] });
+    await addLog({ guildId: interaction.guildId!, action: "ANTIRAID", moderatorId: interaction.user.id, moderatorName: interaction.user.username, details: enabled ? "Activé" : "Désactivé" });
   },
 };
 
 export const automodCommand = {
   data: new SlashCommandBuilder()
     .setName("automod")
-    .setDescription("Activer/désactiver l'automodération")
+    .setDescription("🤖 Configurer le système d'automodération IA")
     .setDefaultMemberPermissions(adminPerm)
-    .addBooleanOption((o) => o.setName("activer").setDescription("Activer ou désactiver").setRequired(true)),
+    .addBooleanOption((o) => o.setName("activer").setDescription("Activer ou désactiver l'IA de modération").setRequired(true)),
   async execute(interaction: ChatInputCommandInteraction) {
     const enabled = interaction.options.getBoolean("activer", true);
     await getOrCreateConfig(interaction.guildId!);
     await db.update(guildConfigsTable).set({ automodEnabled: enabled }).where(eq(guildConfigsTable.guildId, interaction.guildId!));
 
     const embed = new EmbedBuilder()
-      .setTitle("🤖 Automodération")
-      .setDescription(`Automod **${enabled ? "activée" : "désactivée"}**`)
-      .setColor(enabled ? 0x00ff00 : 0xff0000)
+      .setTitle(`🤖 IA D'AUTOMODÉRATION — ${enabled ? "EN LIGNE" : "HORS LIGNE"}`)
+      .setColor(enabled ? 0x9900ff : 0x666666)
+      .setDescription(
+        `\`\`\`${enabled ? "diff\n+ SYSTÈME IA OPÉRATIONNEL\n+ SURVEILLANCE DES TRANSMISSIONS ACTIVE\n+ FILTRAGE AUTOMATIQUE EN COURS" : "diff\n- SYSTÈME IA DÉSACTIVÉ\n- FILTRAGE AUTOMATIQUE SUSPENDU"}\n\`\`\``
+      )
+      .addFields(
+        { name: "🧠 ÉTAT IA", value: `\`${enabled ? "OPÉRATIONNEL" : "SUSPENDU"}\``, inline: true },
+        { name: "🔍 FILTRAGE", value: `\`${enabled ? "ACTIF" : "INACTIF"}\``, inline: true },
+      )
+      .setFooter({ text: FOOTER })
       .setTimestamp();
+
     await interaction.reply({ embeds: [embed] });
+    await addLog({ guildId: interaction.guildId!, action: "AUTOMOD", moderatorId: interaction.user.id, moderatorName: interaction.user.username, details: enabled ? "Activé" : "Désactivé" });
   },
 };
 
 export const addwordCommand = {
   data: new SlashCommandBuilder()
     .setName("addword")
-    .setDescription("Ajouter un mot banni")
+    .setDescription("🚫 Ajouter un terme à la liste noire du filtre IA")
     .setDefaultMemberPermissions(adminPerm)
-    .addStringOption((o) => o.setName("mot").setDescription("Le mot à bannir").setRequired(true)),
+    .addStringOption((o) => o.setName("mot").setDescription("Le terme à bannir").setRequired(true)),
   async execute(interaction: ChatInputCommandInteraction) {
     const word = interaction.options.getString("mot", true).toLowerCase();
     const guildId = interaction.guildId!;
@@ -231,14 +295,18 @@ export const addwordCommand = {
       .where(and(eq(bannedWordsTable.guildId, guildId), eq(bannedWordsTable.word, word)));
 
     if (existing.length > 0) {
-      return interaction.reply({ content: "❌ Ce mot est déjà dans la liste.", ephemeral: true });
+      return interaction.reply({ content: "❌ Ce terme est déjà enregistré dans le filtre IA.", ephemeral: true });
     }
 
     await db.insert(bannedWordsTable).values({ guildId, word });
+
     const embed = new EmbedBuilder()
-      .setTitle("🚫 Mot ajouté")
-      .setDescription(`\`${word}\` ajouté à la liste des mots bannis`)
-      .setColor(0xff6b6b);
+      .setTitle("🚫 TERME AJOUTÉ AU FILTRE IA")
+      .setColor(0xff6b6b)
+      .setDescription(`\`\`\`diff\n- TERME "${word.toUpperCase()}" AJOUTÉ À LA LISTE NOIRE\n- FILTRAGE AUTOMATIQUE ACTIVÉ POUR CE MOT\n\`\`\``)
+      .setFooter({ text: FOOTER })
+      .setTimestamp();
+
     await interaction.reply({ embeds: [embed], ephemeral: true });
   },
 };
@@ -246,9 +314,9 @@ export const addwordCommand = {
 export const removewordCommand = {
   data: new SlashCommandBuilder()
     .setName("removeword")
-    .setDescription("Retirer un mot banni")
+    .setDescription("✅ Retirer un terme de la liste noire du filtre IA")
     .setDefaultMemberPermissions(adminPerm)
-    .addStringOption((o) => o.setName("mot").setDescription("Le mot à retirer").setRequired(true)),
+    .addStringOption((o) => o.setName("mot").setDescription("Le terme à retirer").setRequired(true)),
   async execute(interaction: ChatInputCommandInteraction) {
     const word = interaction.options.getString("mot", true).toLowerCase();
     const guildId = interaction.guildId!;
@@ -258,13 +326,16 @@ export const removewordCommand = {
       .returning();
 
     if (deleted.length === 0) {
-      return interaction.reply({ content: "❌ Ce mot n'est pas dans la liste.", ephemeral: true });
+      return interaction.reply({ content: "❌ Ce terme n'est pas dans la liste noire.", ephemeral: true });
     }
 
     const embed = new EmbedBuilder()
-      .setTitle("✅ Mot retiré")
-      .setDescription(`\`${word}\` retiré de la liste des mots bannis`)
-      .setColor(0x00ff00);
+      .setTitle("✅ TERME RETIRÉ DU FILTRE IA")
+      .setColor(0x00ff88)
+      .setDescription(`\`\`\`diff\n+ TERME "${word.toUpperCase()}" RETIRÉ DE LA LISTE NOIRE\n+ FILTRAGE DÉSACTIVÉ POUR CE MOT\n\`\`\``)
+      .setFooter({ text: FOOTER })
+      .setTimestamp();
+
     await interaction.reply({ embeds: [embed], ephemeral: true });
   },
 };
@@ -272,21 +343,30 @@ export const removewordCommand = {
 export const bannedwordsCommand = {
   data: new SlashCommandBuilder()
     .setName("bannedwords")
-    .setDescription("Voir la liste des mots bannis")
+    .setDescription("📋 Consulter la liste noire du filtre IA")
     .setDefaultMemberPermissions(adminPerm),
   async execute(interaction: ChatInputCommandInteraction) {
     const guildId = interaction.guildId!;
     const words = await db.select().from(bannedWordsTable).where(eq(bannedWordsTable.guildId, guildId));
 
     if (words.length === 0) {
-      return interaction.reply({ content: "Aucun mot banni pour ce serveur.", ephemeral: true });
+      const embed = new EmbedBuilder()
+        .setTitle("📋 LISTE NOIRE — AUCUNE ENTRÉE")
+        .setColor(0x00ff88)
+        .setDescription("```diff\n+ LISTE NOIRE VIDE\n+ AUCUN TERME INTERDIT ENREGISTRÉ\n```")
+        .setFooter({ text: FOOTER });
+      return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
     const embed = new EmbedBuilder()
-      .setTitle("🚫 Mots bannis")
-      .setDescription(words.map((w) => `\`${w.word}\``).join(", "))
+      .setTitle(`🚫 LISTE NOIRE DU FILTRE IA — ${words.length} TERME(S)`)
       .setColor(0xff6b6b)
+      .setDescription(
+        `\`\`\`diff\n- TERMES BANNIS DU RÉSEAU :\n\`\`\`\n${words.map((w) => `\`${w.word}\``).join(" | ")}`
+      )
+      .setFooter({ text: FOOTER })
       .setTimestamp();
+
     await interaction.reply({ embeds: [embed], ephemeral: true });
   },
 };

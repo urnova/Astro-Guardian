@@ -9,6 +9,7 @@ import {
 import { registerCommands } from "./commands/index.js";
 import { registerEvents } from "./events/index.js";
 import { recoverGiveaways } from "./commands/giveaway.js";
+import { registerBotClientGetter } from "./lib/db.js";
 
 declare module "discord.js" {
   interface Client {
@@ -45,6 +46,8 @@ export async function startBot(): Promise<void> {
   });
 
   client.commands = new Collection();
+
+  registerBotClientGetter(() => botClient);
 
   const commands = registerCommands(client);
   registerEvents(client);

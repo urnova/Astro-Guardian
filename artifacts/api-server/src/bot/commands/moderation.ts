@@ -11,30 +11,38 @@ import { eq, and } from "drizzle-orm";
 import { getOrCreateConfig, addLog } from "../lib/db.js";
 
 const adminPerm = PermissionFlagsBits.Administrator;
+const ASTRAL_COLOR = 0x00f0ff;
+const FOOTER = "⬡ ASTRAL TECHNOLOGIE — NEXUS v2.0";
 
 export const kickCommand = {
   data: new SlashCommandBuilder()
     .setName("kick")
-    .setDescription("Exclure un membre du serveur")
+    .setDescription("⚡ Éjecter un agent du nœud")
     .setDefaultMemberPermissions(adminPerm)
-    .addUserOption((o) => o.setName("membre").setDescription("Le membre à exclure").setRequired(true))
-    .addStringOption((o) => o.setName("raison").setDescription("Raison de l'exclusion").setRequired(false)),
+    .addUserOption((o) => o.setName("membre").setDescription("La cible à éjecter").setRequired(true))
+    .addStringOption((o) => o.setName("raison").setDescription("Motif de l'éjection").setRequired(false)),
   async execute(interaction: ChatInputCommandInteraction) {
     const member = interaction.options.getMember("membre") as GuildMember | null;
-    if (!member) return interaction.reply({ content: "❌ Membre introuvable.", ephemeral: true });
-    const reason = interaction.options.getString("raison") ?? "Aucune raison fournie";
+    if (!member) return interaction.reply({ content: "❌ Agent introuvable dans le système.", ephemeral: true });
+    const reason = interaction.options.getString("raison") ?? "Aucun motif fourni";
     try {
       await member.kick(reason);
       const embed = new EmbedBuilder()
-        .setTitle("👢 Membre exclu")
-        .setDescription(`${member} a été exclu du serveur`)
-        .addFields({ name: "Raison", value: reason }, { name: "Modérateur", value: interaction.user.toString() })
-        .setColor(0xff6b6b)
+        .setTitle("⚡ ÉJECTION EXÉCUTÉE")
+        .setColor(0xff6b35)
+        .setDescription(`\`\`\`diff\n- AGENT ÉJECTÉ DU NŒUD\n- ACCÈS RÉVOQUÉ\n\`\`\``)
+        .addFields(
+          { name: "🎯 CIBLE", value: `${member} — \`${member.user.username}\``, inline: true },
+          { name: "⚖️ MOTIF", value: `\`${reason}\``, inline: true },
+          { name: "👤 OPÉRATEUR", value: interaction.user.toString(), inline: true },
+        )
+        .setThumbnail(member.user.displayAvatarURL())
+        .setFooter({ text: FOOTER })
         .setTimestamp();
       await interaction.reply({ embeds: [embed] });
       await addLog({ guildId: interaction.guildId!, action: "KICK", targetId: member.id, targetName: member.user.username, moderatorId: interaction.user.id, moderatorName: interaction.user.username, details: reason });
     } catch {
-      await interaction.reply({ content: "❌ Impossible d'exclure ce membre.", ephemeral: true });
+      await interaction.reply({ content: "❌ Impossible d'éjecter cet agent. Permissions insuffisantes.", ephemeral: true });
     }
   },
 };
@@ -42,26 +50,32 @@ export const kickCommand = {
 export const banCommand = {
   data: new SlashCommandBuilder()
     .setName("ban")
-    .setDescription("Bannir un membre du serveur")
+    .setDescription("☠️ Bannir définitivement un agent du réseau")
     .setDefaultMemberPermissions(adminPerm)
-    .addUserOption((o) => o.setName("membre").setDescription("Le membre à bannir").setRequired(true))
-    .addStringOption((o) => o.setName("raison").setDescription("Raison du ban").setRequired(false)),
+    .addUserOption((o) => o.setName("membre").setDescription("La cible à bannir").setRequired(true))
+    .addStringOption((o) => o.setName("raison").setDescription("Motif du ban").setRequired(false)),
   async execute(interaction: ChatInputCommandInteraction) {
     const member = interaction.options.getMember("membre") as GuildMember | null;
-    if (!member) return interaction.reply({ content: "❌ Membre introuvable.", ephemeral: true });
-    const reason = interaction.options.getString("raison") ?? "Aucune raison fournie";
+    if (!member) return interaction.reply({ content: "❌ Agent introuvable.", ephemeral: true });
+    const reason = interaction.options.getString("raison") ?? "Aucun motif fourni";
     try {
       await member.ban({ reason });
       const embed = new EmbedBuilder()
-        .setTitle("🔨 Membre banni")
-        .setDescription(`${member} a été banni du serveur`)
-        .addFields({ name: "Raison", value: reason }, { name: "Modérateur", value: interaction.user.toString() })
+        .setTitle("☠️ BAN EXÉCUTÉ — ACCÈS TERMINAL RÉVOQUÉ")
         .setColor(0xff0000)
+        .setDescription(`\`\`\`diff\n- AGENT BANNI DU RÉSEAU\n- ACCÈS DÉFINITIVEMENT RÉVOQUÉ\n- EMPREINTE SYSTÈME MARQUÉE\n\`\`\``)
+        .addFields(
+          { name: "🎯 CIBLE", value: `${member} — \`${member.user.username}\``, inline: true },
+          { name: "⚖️ MOTIF", value: `\`${reason}\``, inline: true },
+          { name: "👤 OPÉRATEUR", value: interaction.user.toString(), inline: true },
+        )
+        .setThumbnail(member.user.displayAvatarURL())
+        .setFooter({ text: FOOTER })
         .setTimestamp();
       await interaction.reply({ embeds: [embed] });
       await addLog({ guildId: interaction.guildId!, action: "BAN", targetId: member.id, targetName: member.user.username, moderatorId: interaction.user.id, moderatorName: interaction.user.username, details: reason });
     } catch {
-      await interaction.reply({ content: "❌ Impossible de bannir ce membre.", ephemeral: true });
+      await interaction.reply({ content: "❌ Protocole de ban échoué. Vérifiez les permissions.", ephemeral: true });
     }
   },
 };
@@ -69,24 +83,30 @@ export const banCommand = {
 export const unbanCommand = {
   data: new SlashCommandBuilder()
     .setName("unban")
-    .setDescription("Débannir un utilisateur")
+    .setDescription("🔓 Lever le ban — Restaurer l'accès réseau")
     .setDefaultMemberPermissions(adminPerm)
-    .addStringOption((o) => o.setName("user_id").setDescription("L'ID Discord de l'utilisateur").setRequired(true))
-    .addStringOption((o) => o.setName("raison").setDescription("Raison").setRequired(false)),
+    .addStringOption((o) => o.setName("user_id").setDescription("ID Discord de la cible").setRequired(true))
+    .addStringOption((o) => o.setName("raison").setDescription("Motif du déban").setRequired(false)),
   async execute(interaction: ChatInputCommandInteraction) {
     const userId = interaction.options.getString("user_id", true);
-    const reason = interaction.options.getString("raison") ?? "Aucune raison";
+    const reason = interaction.options.getString("raison") ?? "Réhabilitation approuvée";
     try {
       await interaction.guild!.members.unban(userId, reason);
       const embed = new EmbedBuilder()
-        .setTitle("✅ Utilisateur débanni")
-        .setDescription(`L'utilisateur \`${userId}\` a été débanni`)
-        .setColor(0x00ff00)
+        .setTitle("🔓 ACCÈS RESTAURÉ — RÉHABILITATION VALIDÉE")
+        .setColor(0x00ff88)
+        .setDescription(`\`\`\`diff\n+ BAN LEVÉ AVEC SUCCÈS\n+ ACCÈS RÉSEAU RESTAURÉ\n+ AGENT RÉHABILITÉ\n\`\`\``)
+        .addFields(
+          { name: "🆔 ID CIBLE", value: `\`${userId}\``, inline: true },
+          { name: "⚖️ MOTIF", value: `\`${reason}\``, inline: true },
+          { name: "👤 OPÉRATEUR", value: interaction.user.toString(), inline: true },
+        )
+        .setFooter({ text: FOOTER })
         .setTimestamp();
       await interaction.reply({ embeds: [embed] });
       await addLog({ guildId: interaction.guildId!, action: "UNBAN", targetId: userId, moderatorId: interaction.user.id, moderatorName: interaction.user.username, details: reason });
     } catch {
-      await interaction.reply({ content: "❌ Impossible de débannir cet utilisateur.", ephemeral: true });
+      await interaction.reply({ content: "❌ Agent introuvable dans les fichiers de ban.", ephemeral: true });
     }
   },
 };
@@ -94,28 +114,33 @@ export const unbanCommand = {
 export const muteCommand = {
   data: new SlashCommandBuilder()
     .setName("mute")
-    .setDescription("Timeout un membre")
+    .setDescription("🔇 Mettre un agent en silence forcé")
     .setDefaultMemberPermissions(adminPerm)
-    .addUserOption((o) => o.setName("membre").setDescription("Le membre à mute").setRequired(true))
-    .addIntegerOption((o) => o.setName("minutes").setDescription("Durée en minutes").setRequired(false))
-    .addStringOption((o) => o.setName("raison").setDescription("Raison").setRequired(false)),
+    .addUserOption((o) => o.setName("membre").setDescription("La cible à museler").setRequired(true))
+    .addIntegerOption((o) => o.setName("minutes").setDescription("Durée en minutes (défaut: 10)").setRequired(false))
+    .addStringOption((o) => o.setName("raison").setDescription("Motif").setRequired(false)),
   async execute(interaction: ChatInputCommandInteraction) {
     const member = interaction.options.getMember("membre") as GuildMember | null;
-    if (!member) return interaction.reply({ content: "❌ Membre introuvable.", ephemeral: true });
+    if (!member) return interaction.reply({ content: "❌ Agent introuvable.", ephemeral: true });
     const minutes = interaction.options.getInteger("minutes") ?? 10;
-    const reason = interaction.options.getString("raison") ?? "Aucune raison";
+    const reason = interaction.options.getString("raison") ?? "Silence forcé par protocole";
     try {
       await member.timeout(minutes * 60 * 1000, reason);
       const embed = new EmbedBuilder()
-        .setTitle("🔇 Membre timeout")
-        .setDescription(`${member} a été mis en timeout pour **${minutes} minute(s)**`)
-        .addFields({ name: "Raison", value: reason })
-        .setColor(0xffa500)
+        .setTitle("🔇 PROTOCOLE SILENCE ACTIVÉ")
+        .setColor(0xff9900)
+        .setDescription(`\`\`\`diff\n- COMMUNICATIONS DE L'AGENT COUPÉES\n- TIMEOUT SYSTÈME APPLIQUÉ\n\`\`\``)
+        .addFields(
+          { name: "🎯 CIBLE", value: `${member} — \`${member.user.username}\``, inline: true },
+          { name: "⏱️ DURÉE", value: `\`${minutes} minute(s)\``, inline: true },
+          { name: "⚖️ MOTIF", value: `\`${reason}\``, inline: false },
+        )
+        .setFooter({ text: FOOTER })
         .setTimestamp();
       await interaction.reply({ embeds: [embed] });
-      await addLog({ guildId: interaction.guildId!, action: "MUTE", targetId: member.id, targetName: member.user.username, moderatorId: interaction.user.id, moderatorName: interaction.user.username, details: `${minutes}min - ${reason}` });
+      await addLog({ guildId: interaction.guildId!, action: "MUTE", targetId: member.id, targetName: member.user.username, moderatorId: interaction.user.id, moderatorName: interaction.user.username, details: `${minutes}min — ${reason}` });
     } catch {
-      await interaction.reply({ content: "❌ Impossible de mute ce membre.", ephemeral: true });
+      await interaction.reply({ content: "❌ Échec du protocole silence.", ephemeral: true });
     }
   },
 };
@@ -123,23 +148,28 @@ export const muteCommand = {
 export const unmuteCommand = {
   data: new SlashCommandBuilder()
     .setName("unmute")
-    .setDescription("Retirer le timeout d'un membre")
+    .setDescription("🔊 Rétablir les communications d'un agent")
     .setDefaultMemberPermissions(adminPerm)
-    .addUserOption((o) => o.setName("membre").setDescription("Le membre").setRequired(true)),
+    .addUserOption((o) => o.setName("membre").setDescription("L'agent à rétablir").setRequired(true)),
   async execute(interaction: ChatInputCommandInteraction) {
     const member = interaction.options.getMember("membre") as GuildMember | null;
-    if (!member) return interaction.reply({ content: "❌ Membre introuvable.", ephemeral: true });
+    if (!member) return interaction.reply({ content: "❌ Agent introuvable.", ephemeral: true });
     try {
       await member.timeout(null);
       const embed = new EmbedBuilder()
-        .setTitle("🔊 Timeout retiré")
-        .setDescription(`${member} peut à nouveau parler`)
-        .setColor(0x00ff00)
+        .setTitle("🔊 COMMUNICATIONS RÉTABLIES")
+        .setColor(0x00ff88)
+        .setDescription(`\`\`\`diff\n+ SILENCE LEVÉ\n+ COMMUNICATIONS RESTAURÉES\n\`\`\``)
+        .addFields(
+          { name: "🎯 AGENT", value: `${member} — \`${member.user.username}\``, inline: true },
+          { name: "👤 OPÉRATEUR", value: interaction.user.toString(), inline: true },
+        )
+        .setFooter({ text: FOOTER })
         .setTimestamp();
       await interaction.reply({ embeds: [embed] });
       await addLog({ guildId: interaction.guildId!, action: "UNMUTE", targetId: member.id, targetName: member.user.username, moderatorId: interaction.user.id, moderatorName: interaction.user.username });
     } catch {
-      await interaction.reply({ content: "❌ Erreur.", ephemeral: true });
+      await interaction.reply({ content: "❌ Erreur lors du rétablissement.", ephemeral: true });
     }
   },
 };
@@ -147,18 +177,27 @@ export const unmuteCommand = {
 export const clearCommand = {
   data: new SlashCommandBuilder()
     .setName("clear")
-    .setDescription("Supprimer des messages dans le canal")
+    .setDescription("🧹 Purger les transmissions du canal")
     .setDefaultMemberPermissions(adminPerm)
-    .addIntegerOption((o) => o.setName("nombre").setDescription("Nombre de messages à supprimer (max 100)").setRequired(false)),
+    .addIntegerOption((o) => o.setName("nombre").setDescription("Nombre de messages à purger (max 100)").setRequired(false)),
   async execute(interaction: ChatInputCommandInteraction) {
     const amount = Math.min(interaction.options.getInteger("nombre") ?? 10, 100);
     await interaction.deferReply({ ephemeral: true });
     try {
       const deleted = await (interaction.channel as any).bulkDelete(amount, true);
-      await interaction.editReply(`🧹 **${deleted.size}** messages supprimés.`);
+      const embed = new EmbedBuilder()
+        .setTitle("🧹 PURGE DE CANAL EXÉCUTÉE")
+        .setColor(0x00aaff)
+        .setDescription(
+          `\`\`\`diff\n+ ${deleted.size} TRANSMISSION(S) PURGÉE(S)\n+ CANAL NETTOYÉ AVEC SUCCÈS\n\`\`\``
+        )
+        .addFields({ name: "📡 CANAL", value: `<#${interaction.channelId}>`, inline: true })
+        .setFooter({ text: FOOTER })
+        .setTimestamp();
+      await interaction.editReply({ embeds: [embed] });
       await addLog({ guildId: interaction.guildId!, action: "CLEAR", moderatorId: interaction.user.id, moderatorName: interaction.user.username, details: `${deleted.size} messages dans #${(interaction.channel as any)?.name}` });
     } catch {
-      await interaction.editReply("❌ Erreur lors de la suppression.");
+      await interaction.editReply("❌ Erreur lors de la purge. Les messages trop anciens ne peuvent être supprimés.");
     }
   },
 };
@@ -166,17 +205,17 @@ export const clearCommand = {
 export const warnCommand = {
   data: new SlashCommandBuilder()
     .setName("warn")
-    .setDescription("Avertir un membre")
+    .setDescription("⚠️ Émettre un avertissement officiel")
     .setDefaultMemberPermissions(adminPerm)
-    .addUserOption((o) => o.setName("membre").setDescription("Le membre à avertir").setRequired(true))
-    .addStringOption((o) => o.setName("raison").setDescription("Raison").setRequired(false)),
+    .addUserOption((o) => o.setName("membre").setDescription("La cible").setRequired(true))
+    .addStringOption((o) => o.setName("raison").setDescription("Motif de l'avertissement").setRequired(false)),
   async execute(interaction: ChatInputCommandInteraction) {
     const member = interaction.options.getMember("membre") as GuildMember | null;
-    if (!member) return interaction.reply({ content: "❌ Membre introuvable.", ephemeral: true });
-    const reason = interaction.options.getString("raison") ?? "Aucune raison";
+    if (!member) return interaction.reply({ content: "❌ Agent introuvable.", ephemeral: true });
+    const reason = interaction.options.getString("raison") ?? "Violation du protocole";
     const guildId = interaction.guildId!;
 
-    const warn = await db.insert(warnsTable).values({
+    await db.insert(warnsTable).values({
       guildId,
       userId: member.id,
       username: member.user.username,
@@ -188,59 +227,78 @@ export const warnCommand = {
     const allWarns = await db.select().from(warnsTable)
       .where(and(eq(warnsTable.guildId, guildId), eq(warnsTable.userId, member.id)));
 
+    const warnLevel = allWarns.length;
+    const dangerColor = warnLevel >= 3 ? 0xff0000 : warnLevel >= 2 ? 0xff6600 : 0xffdd00;
+
     const embed = new EmbedBuilder()
-      .setTitle("⚠️ Avertissement")
-      .setColor(0xffff00)
+      .setTitle(`⚠️ AVERTISSEMENT OFFICIEL ÉMIS — ALERTE NIVEAU ${warnLevel}`)
+      .setColor(dangerColor)
+      .setDescription(`\`\`\`yaml\nSTATUT : AVERTISSEMENT ENREGISTRÉ\nNIVEAU MENACE : ${warnLevel}/3\n${warnLevel >= 3 ? "SEUIL CRITIQUE ATTEINT — BAN AUTOMATIQUE\n" : ""}\`\`\``)
       .addFields(
-        { name: "Membre", value: member.toString(), inline: true },
-        { name: "Raison", value: reason, inline: true },
-        { name: "Total warns", value: `**${allWarns.length}**`, inline: true },
+        { name: "🎯 CIBLE", value: `${member} — \`${member.user.username}\``, inline: true },
+        { name: "⚖️ MOTIF", value: `\`${reason}\``, inline: true },
+        { name: "📊 COMPTEUR", value: `\`${warnLevel}/3 avertissements\``, inline: true },
       )
+      .setFooter({ text: FOOTER })
       .setTimestamp();
+
     await interaction.reply({ embeds: [embed] });
+    await addLog({ guildId, action: "WARN", targetId: member.id, targetName: member.user.username, moderatorId: interaction.user.id, moderatorName: interaction.user.username, details: reason });
 
     if (allWarns.length >= 3) {
       try {
-        await member.ban({ reason: "3 avertissements atteints automatiquement" });
-        await interaction.followUp(`🔨 ${member} banni automatiquement — 3 warns atteints.`);
+        await member.ban({ reason: "Seuil critique atteint — 3 avertissements automatiques" });
+        const banEmbed = new EmbedBuilder()
+          .setTitle("☠️ BAN AUTOMATIQUE — SEUIL CRITIQUE ATTEINT")
+          .setColor(0xff0000)
+          .setDescription(`\`\`\`diff\n- PROTOCOLE D'URGENCE ACTIVÉ\n- AGENT ${member.user.username.toUpperCase()} BANNI AUTOMATIQUEMENT\n- 3 AVERTISSEMENTS CONSÉCUTIFS ENREGISTRÉS\n\`\`\``)
+          .setFooter({ text: FOOTER })
+          .setTimestamp();
+        await interaction.followUp({ embeds: [banEmbed] });
       } catch {}
     }
-
-    await addLog({ guildId, action: "WARN", targetId: member.id, targetName: member.user.username, moderatorId: interaction.user.id, moderatorName: interaction.user.username, details: reason });
   },
 };
 
 export const warnsCommand = {
   data: new SlashCommandBuilder()
     .setName("warns")
-    .setDescription("Voir les avertissements d'un membre")
+    .setDescription("📋 Consulter le dossier d'avertissements d'un agent")
     .setDefaultMemberPermissions(adminPerm)
-    .addUserOption((o) => o.setName("membre").setDescription("Le membre").setRequired(true)),
+    .addUserOption((o) => o.setName("membre").setDescription("L'agent à consulter").setRequired(true)),
   async execute(interaction: ChatInputCommandInteraction) {
     const member = interaction.options.getMember("membre") as GuildMember | null;
-    if (!member) return interaction.reply({ content: "❌ Membre introuvable.", ephemeral: true });
+    if (!member) return interaction.reply({ content: "❌ Agent introuvable.", ephemeral: true });
     const guildId = interaction.guildId!;
 
     const memberWarns = await db.select().from(warnsTable)
       .where(and(eq(warnsTable.guildId, guildId), eq(warnsTable.userId, member.id)));
 
     if (memberWarns.length === 0) {
-      return interaction.reply({ content: `${member} n'a aucun avertissement.`, ephemeral: true });
+      const embed = new EmbedBuilder()
+        .setTitle("📋 DOSSIER D'AVERTISSEMENTS — VIDE")
+        .setColor(0x00ff88)
+        .setDescription(`\`\`\`diff\n+ AGENT ${member.user.username.toUpperCase()} — CASIER VIERGE\n+ AUCUNE INFRACTION ENREGISTRÉE\n\`\`\``)
+        .setFooter({ text: FOOTER });
+      return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
     const embed = new EmbedBuilder()
-      .setTitle(`⚠️ Avertissements de ${member.user.username}`)
-      .setColor(0xffff00);
+      .setTitle(`📋 DOSSIER D'AVERTISSEMENTS — ${member.user.username.toUpperCase()}`)
+      .setColor(memberWarns.length >= 3 ? 0xff0000 : 0xffdd00)
+      .setDescription(`\`\`\`yaml\nNIVEAU MENACE : ${memberWarns.length}/3\n\`\`\``)
+      .setThumbnail(member.user.displayAvatarURL());
 
     for (let i = 0; i < memberWarns.length; i++) {
       const w = memberWarns[i];
       embed.addFields({
-        name: `Warn #${i + 1}`,
-        value: `**Raison:** ${w.reason}\n**Modérateur:** ${w.moderatorName}\n**Date:** <t:${Math.floor(w.createdAt.getTime() / 1000)}:f>`,
+        name: `⚠️ INFRACTION #${i + 1}`,
+        value: `**Motif:** \`${w.reason}\`\n**Opérateur:** \`${w.moderatorName}\`\n**Date:** <t:${Math.floor(w.createdAt.getTime() / 1000)}:f>`,
         inline: false,
       });
     }
 
+    embed.setFooter({ text: FOOTER }).setTimestamp();
     await interaction.reply({ embeds: [embed], ephemeral: true });
   },
 };
@@ -248,13 +306,13 @@ export const warnsCommand = {
 export const unwarnCommand = {
   data: new SlashCommandBuilder()
     .setName("unwarn")
-    .setDescription("Retirer un avertissement d'un membre")
+    .setDescription("✅ Effacer un avertissement du dossier")
     .setDefaultMemberPermissions(adminPerm)
-    .addUserOption((o) => o.setName("membre").setDescription("Le membre").setRequired(true))
-    .addIntegerOption((o) => o.setName("numero").setDescription("Numéro du warn à retirer").setRequired(true)),
+    .addUserOption((o) => o.setName("membre").setDescription("L'agent concerné").setRequired(true))
+    .addIntegerOption((o) => o.setName("numero").setDescription("Numéro de l'infraction à effacer").setRequired(true)),
   async execute(interaction: ChatInputCommandInteraction) {
     const member = interaction.options.getMember("membre") as GuildMember | null;
-    if (!member) return interaction.reply({ content: "❌ Membre introuvable.", ephemeral: true });
+    if (!member) return interaction.reply({ content: "❌ Agent introuvable.", ephemeral: true });
     const numero = interaction.options.getInteger("numero", true);
     const guildId = interaction.guildId!;
 
@@ -262,19 +320,21 @@ export const unwarnCommand = {
       .where(and(eq(warnsTable.guildId, guildId), eq(warnsTable.userId, member.id)));
 
     if (numero < 1 || numero > memberWarns.length) {
-      return interaction.reply({ content: "❌ Numéro d'avertissement invalide.", ephemeral: true });
+      return interaction.reply({ content: "❌ Numéro d'infraction invalide.", ephemeral: true });
     }
 
     const warnToRemove = memberWarns[numero - 1];
     await db.delete(warnsTable).where(eq(warnsTable.id, warnToRemove.id));
 
     const embed = new EmbedBuilder()
-      .setTitle("✅ Avertissement retiré")
+      .setTitle("✅ INFRACTION EFFACÉE DU DOSSIER")
+      .setColor(0x00ff88)
+      .setDescription(`\`\`\`diff\n+ AVERTISSEMENT #${numero} SUPPRIMÉ\n+ DOSSIER MIS À JOUR\n\`\`\``)
       .addFields(
-        { name: "Membre", value: member.toString(), inline: true },
-        { name: "Warn retiré", value: warnToRemove.reason, inline: true },
+        { name: "🎯 AGENT", value: `${member} — \`${member.user.username}\``, inline: true },
+        { name: "🗑️ INFRACTION RETIRÉE", value: `\`${warnToRemove.reason}\``, inline: true },
       )
-      .setColor(0x00ff00)
+      .setFooter({ text: FOOTER })
       .setTimestamp();
     await interaction.reply({ embeds: [embed] });
   },
