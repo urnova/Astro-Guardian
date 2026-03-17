@@ -17,7 +17,7 @@ if (process.env.NODE_ENV === "production") {
   const panelDist = path.resolve(process.cwd(), "artifacts/astral-panel/dist/public");
   if (fs.existsSync(panelDist)) {
     app.use(express.static(panelDist));
-    app.get("*", (_req, res) => {
+    app.get("/{*splat}", (_req, res) => {
       res.sendFile(path.join(panelDist, "index.html"));
     });
   }
