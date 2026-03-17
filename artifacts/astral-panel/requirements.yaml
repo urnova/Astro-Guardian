@@ -1,0 +1,17 @@
+packages:
+  "date-fns": "For formatting timestamps in logs, giveaways, and warns"
+  "framer-motion": "For smooth page transitions and futuristic HUD animations"
+  "recharts": "For displaying server statistics in a sci-fi dashboard format"
+
+images:
+  - path: "artifacts/astral-panel/public/images/cyberpunk-bg.png"
+    description: "Dark sci-fi background, deep space blue with subtle glowing electric cyan grid lines, holographic HUD elements in the background, out of focus, high tech, minimal"
+    aspect_ratio: "16:9"
+  - path: "artifacts/astral-panel/public/images/astral-logo.png"
+    description: "A glowing electric cyan futuristic cyberpunk hexagon logo with a stylized 'A' inside, dark transparent background, high tech"
+    aspect_ratio: "1:1"
+
+notes:
+  - "The UI relies on React Query hooks exported from @workspace/api-client-react"
+  - "Using wouter for routing"
+  - "Tailwind v4 is used with custom CSS variables for a sci-fi aesthetic"

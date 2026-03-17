@@ -1,21 +1,31 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import React from 'react';
+import { Link } from 'wouter';
+import { AlertCircle } from 'lucide-react';
+import { CyberButton, CyberCard } from '@/components/CyberUI';
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md mx-4">
-        <CardContent className="pt-6">
-          <div className="flex mb-4 gap-2">
-            <AlertCircle className="h-8 w-8 text-red-500" />
-            <h1 className="text-2xl font-bold text-gray-900">404 Page Not Found</h1>
-          </div>
-
-          <p className="mt-4 text-sm text-gray-600">
-            Did you forget to add the page to the router?
-          </p>
-        </CardContent>
-      </Card>
+    <div className="min-h-screen w-full flex items-center justify-center scanlines relative p-4">
+      {/* Background Image Layer */}
+      <div 
+        className="absolute inset-0 z-[-1] opacity-20 bg-cover bg-center pointer-events-none"
+        style={{ backgroundImage: `url(${import.meta.env.BASE_URL}images/cyberpunk-bg.png)` }}
+      />
+      
+      <CyberCard className="max-w-md w-full text-center py-12 box-glow-destructive border-destructive/50" glowing>
+        <div className="flex justify-center mb-6">
+          <AlertCircle className="w-20 h-20 text-destructive animate-pulse" />
+        </div>
+        <h1 className="text-4xl font-display font-bold text-destructive mb-4 tracking-widest">404 ERROR</h1>
+        <p className="text-muted-foreground font-body text-lg mb-8">
+          The requested sector does not exist in the neural network or your access clearance is insufficient.
+        </p>
+        <Link href="/">
+          <CyberButton variant="outline">
+            Return to Core
+          </CyberButton>
+        </Link>
+      </CyberCard>
     </div>
   );
 }

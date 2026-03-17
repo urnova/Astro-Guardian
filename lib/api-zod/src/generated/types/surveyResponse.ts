@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
-  status: string;
+export interface SurveyResponse {
+  id: number;
+  userId: string;
+  username: string;
+  answers: string[];
+  createdAt: Date;
 }
