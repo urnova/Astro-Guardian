@@ -170,10 +170,17 @@ export async function handleRulesButton(interaction: ButtonInteraction): Promise
       return true;
     }
 
-    const member = interaction.member as any;
     const roleId = rules[0].memberRoleId;
+    const guild = interaction.guild;
 
-    if (member.roles?.cache?.has(roleId)) {
+    if (!guild) {
+      await interaction.editReply({ content: "❌ Impossible de trouver le serveur." });
+      return true;
+    }
+
+    const member = await guild.members.fetch(interaction.user.id);
+
+    if (member.roles.cache.has(roleId)) {
       await interaction.editReply({ content: "✅ Tu as déjà accepté les règles et possèdes déjà le rôle Membre." });
       return true;
     }
