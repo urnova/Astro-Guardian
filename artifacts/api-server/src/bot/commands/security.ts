@@ -24,6 +24,7 @@ export const lockdownCommand = {
     await interaction.reply({ content: "🔒 **INITIALISATION DU PROTOCOLE BRÈCHE...**", ephemeral: true });
 
     try {
+      await getOrCreateConfig(interaction.guildId!);
       await db.update(guildConfigsTable)
         .set({ breachMode: true })
         .where(eq(guildConfigsTable.guildId, interaction.guildId!));
@@ -68,6 +69,7 @@ export const unlockCommand = {
     await interaction.reply({ content: "🔓 **SORTIE DE BRÈCHE EN COURS...**", ephemeral: true });
 
     try {
+      await getOrCreateConfig(interaction.guildId!);
       await db.update(guildConfigsTable)
         .set({ breachMode: false })
         .where(eq(guildConfigsTable.guildId, interaction.guildId!));
@@ -286,5 +288,7 @@ export const bannedwordsCommand = {
       .setColor(0xff6b6b)
       .setTimestamp();
     await interaction.reply({ embeds: [embed], ephemeral: true });
+  },
+};
   },
 };
