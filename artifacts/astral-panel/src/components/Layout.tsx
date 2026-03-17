@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'wouter';
 import { motion } from 'framer-motion';
-import { Activity, ShieldAlert, Cpu, TerminalSquare, Radio, Users, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, TerminalSquare, Radio, ChevronRight } from 'lucide-react';
 import { useGetBotStatus, useGetBotGuilds } from '@workspace/api-client-react';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -11,82 +11,83 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex bg-background text-foreground scanlines">
-      {/* Background Image Layer */}
       <div 
-        className="fixed inset-0 z-[-1] opacity-20 bg-cover bg-center pointer-events-none"
+        className="fixed inset-0 z-[-1] opacity-[0.07] bg-cover bg-center pointer-events-none"
         style={{ backgroundImage: `url(${import.meta.env.BASE_URL}images/cyberpunk-bg.png)` }}
       />
 
       {/* Sidebar */}
-      <aside className="w-72 flex-shrink-0 border-r border-primary/20 bg-background/80 backdrop-blur-xl flex flex-col z-10">
-        <div className="p-6 border-b border-primary/20 flex items-center gap-4">
+      <aside className="w-72 flex-shrink-0 border-r border-primary/20 bg-background/90 backdrop-blur-xl flex flex-col z-10">
+
+        {/* Logo */}
+        <div className="px-6 pt-7 pb-5 border-b border-primary/20 flex flex-col items-center gap-2">
           <img 
-            src={`${import.meta.env.BASE_URL}images/astral-logo.png`} 
-            alt="Astral Logo" 
-            className="w-12 h-12 object-contain"
+            src={`${import.meta.env.BASE_URL}images/astral-logo.png`}
+            alt="Astral Logo"
+            className="h-12 object-contain"
           />
-          <div>
-            <h1 className="font-display text-xl font-bold text-primary text-glow">ASTRAL</h1>
-            <p className="text-xs text-muted-foreground font-display tracking-widest">SYSTEM LINK</p>
-          </div>
+          <p className="text-[10px] font-display text-primary/40 tracking-[0.25em] uppercase mt-1">Panneau de contrôle</p>
         </div>
 
+        {/* Navigation */}
         <div className="flex-1 overflow-y-auto py-6">
-          <nav className="px-4 space-y-2">
-            <div className="text-xs font-display text-primary/50 mb-4 px-2 uppercase tracking-widest">Main Interface</div>
+          <nav className="px-4 space-y-1">
+            <p className="text-[10px] font-display text-primary/40 mb-3 px-2 uppercase tracking-[0.2em]">Navigation</p>
+
             <Link 
               href="/"
-              className={`flex items-center gap-3 px-4 py-3 transition-all duration-200 cyber-clip ${location === '/' ? 'bg-primary/20 text-primary border-l-2 border-primary' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'}`}
+              className={`flex items-center gap-3 px-4 py-3 rounded transition-all duration-200 ${location === '/' ? 'bg-primary/20 text-primary border-l-2 border-primary' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'}`}
             >
-              <Cpu className="w-5 h-5" />
-              <span className="font-display tracking-wide text-sm">Dashboard</span>
+              <LayoutDashboard className="w-4 h-4 shrink-0" />
+              <span className="font-body text-sm font-medium">Tableau de bord</span>
             </Link>
 
-            <div className="text-xs font-display text-primary/50 mt-8 mb-4 px-2 uppercase tracking-widest">Active Networks</div>
+            <p className="text-[10px] font-display text-primary/40 mt-6 mb-3 px-2 uppercase tracking-[0.2em]">Serveurs actifs</p>
             
             {guilds?.map((guild) => (
               <Link
                 key={guild.id}
                 href={`/guilds/${guild.id}`}
-                className={`flex items-center justify-between gap-3 px-4 py-3 transition-all duration-200 cyber-clip group ${location.startsWith(`/guilds/${guild.id}`) ? 'bg-primary/20 text-primary border-l-2 border-primary' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'}`}
+                className={`flex items-center justify-between gap-3 px-4 py-3 rounded transition-all duration-200 group ${location.startsWith(`/guilds/${guild.id}`) ? 'bg-primary/20 text-primary border-l-2 border-primary' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'}`}
               >
                 <div className="flex items-center gap-3 truncate">
                   {guild.icon ? (
-                    <img src={guild.icon} alt={guild.name} className="w-6 h-6 rounded-full border border-primary/30" />
+                    <img src={guild.icon} alt={guild.name} className="w-7 h-7 rounded-full border border-primary/30 shrink-0" />
                   ) : (
-                    <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30 text-[10px] font-bold">
+                    <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30 text-[11px] font-bold shrink-0">
                       {guild.name.charAt(0)}
                     </div>
                   )}
                   <span className="font-body text-sm truncate">{guild.name}</span>
                 </div>
-                <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 shrink-0 transition-opacity" />
               </Link>
             ))}
             
             {guilds?.length === 0 && (
-              <div className="px-6 py-4 text-xs text-muted-foreground italic">No active networks detected.</div>
+              <p className="px-4 py-3 text-xs text-muted-foreground italic">Aucun serveur détecté.</p>
             )}
           </nav>
         </div>
 
-        <div className="p-4 border-t border-primary/20 bg-card/50">
-          <div className="flex items-center justify-between">
+        {/* Bot status footer */}
+        <div className="p-4 border-t border-primary/20 bg-card/40">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <div className="relative">
-                <div className={`w-3 h-3 rounded-full ${status?.online ? 'bg-primary shadow-[0_0_10px_#00F0FF]' : 'bg-destructive shadow-[0_0_10px_#FF0000]'}`} />
-                {status?.online && <div className="absolute inset-0 bg-primary rounded-full animate-ping opacity-50" />}
+                <div className={`w-2.5 h-2.5 rounded-full ${status?.online ? 'bg-primary shadow-[0_0_8px_#00F0FF]' : 'bg-destructive'}`} />
+                {status?.online && <div className="absolute inset-0 bg-primary rounded-full animate-ping opacity-40" />}
               </div>
-              <span className="font-display text-xs text-muted-foreground uppercase tracking-widest">STATUS</span>
+              <span className="font-body text-xs text-muted-foreground">Bot Discord</span>
             </div>
-            <span className={`font-display text-xs font-bold ${status?.online ? 'text-primary' : 'text-destructive'}`}>
-              {status?.online ? 'ONLINE' : 'OFFLINE'}
+            <span className={`font-display text-xs font-bold tracking-wider ${status?.online ? 'text-primary' : 'text-destructive'}`}>
+              {status?.online ? 'EN LIGNE' : 'HORS LIGNE'}
             </span>
           </div>
           {status?.online && (
-            <div className="mt-2 flex justify-between text-[10px] font-display text-muted-foreground tracking-wider">
-              <span>PING: <span className="text-primary">{status.ping}ms</span></span>
-              <span>UPTIME: <span className="text-primary">{Math.floor(status.uptime / 3600000)}h</span></span>
+            <div className="flex justify-between text-[11px] text-muted-foreground">
+              <span>Ping : <span className="text-primary font-semibold">{status.ping} ms</span></span>
+              <span>Actif : <span className="text-primary font-semibold">{Math.floor(status.uptime / 3600000)}h</span></span>
             </div>
           )}
         </div>
@@ -94,24 +95,24 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative z-10 flex flex-col">
-        <header className="h-16 border-b border-primary/20 bg-background/80 backdrop-blur-md flex items-center px-8 justify-between flex-shrink-0">
-          <div className="flex items-center gap-2 text-primary">
-            <TerminalSquare className="w-5 h-5" />
-            <span className="font-display text-sm tracking-widest">ASTRAL_OS_v2.0</span>
+        <header className="h-14 border-b border-primary/20 bg-background/80 backdrop-blur-md flex items-center px-8 justify-between flex-shrink-0">
+          <div className="flex items-center gap-2 text-primary/70">
+            <TerminalSquare className="w-4 h-4" />
+            <span className="font-display text-xs tracking-widest">ASTRAL_OS_v2.0</span>
           </div>
           <div className="flex items-center gap-4">
-            <div className="px-3 py-1 border border-primary/30 bg-primary/10 cyber-clip text-xs font-display text-primary flex items-center gap-2">
+            <div className="px-3 py-1 border border-primary/30 bg-primary/10 text-xs font-display text-primary flex items-center gap-2">
               <Radio className="w-3 h-3 animate-pulse" />
-              SECURE CONNECTION
+              CONNEXION SÉCURISÉE
             </div>
           </div>
         </header>
         
         <div className="flex-1 overflow-y-auto p-8 relative">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.4 }}
           >
             {children}
           </motion.div>
