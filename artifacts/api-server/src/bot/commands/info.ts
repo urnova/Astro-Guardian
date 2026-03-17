@@ -80,7 +80,7 @@ export const commandsListCommand = {
         { name: "🚨 Sécurité", value: "`/breach` `/unbreach` `/nuke` `/antiraid` `/automod` `/addword` `/removeword` `/bannedwords`", inline: false },
         { name: "🔧 Système", value: "`/maintenance` `/maintenance_off` `/setlogchannel`", inline: false },
         { name: "📢 Messagerie", value: "`/say` `/embed` `/announce` `/dm`", inline: false },
-        { name: "🎉 Giveaway", value: "`/giveaway create` `/giveaway end`", inline: false },
+        { name: "🎉 Giveaway", value: "`/giveaway create` `/giveaway list` `/giveaway_end`", inline: false },
         { name: "📝 Questionnaire", value: "`/survey create` `/survey list`", inline: false },
       );
     }
@@ -95,3 +95,4 @@ export const commandsListCommand = {
     await interaction.reply({ embeds: [embed], ephemeral: true });
   },
 };
+
