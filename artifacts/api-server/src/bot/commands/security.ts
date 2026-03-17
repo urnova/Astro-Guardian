@@ -290,5 +290,3 @@ export const bannedwordsCommand = {
     await interaction.reply({ embeds: [embed], ephemeral: true });
   },
 };
-  },
-};
