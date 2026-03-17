@@ -8,6 +8,7 @@ import {
 } from "discord.js";
 import { registerCommands } from "./commands/index.js";
 import { registerEvents } from "./events/index.js";
+import { recoverGiveaways } from "./commands/giveaway.js";
 
 declare module "discord.js" {
   interface Client {
@@ -38,8 +39,9 @@ export async function startBot(): Promise<void> {
       GatewayIntentBits.MessageContent,
       GatewayIntentBits.GuildPresences,
       GatewayIntentBits.DirectMessages,
+      GatewayIntentBits.GuildMessageReactions,
     ],
-    partials: [Partials.Channel, Partials.Message],
+    partials: [Partials.Channel, Partials.Message, Partials.Reaction],
   });
 
   client.commands = new Collection();
@@ -59,6 +61,8 @@ export async function startBot(): Promise<void> {
     } catch (err) {
       console.error("❌ Erreur lors de la sync des commandes:", err);
     }
+
+    await recoverGiveaways(client);
   });
 
   await client.login(token);
