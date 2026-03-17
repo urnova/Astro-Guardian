@@ -5,7 +5,12 @@ const router = Router();
 
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID!;
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET!;
-const REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || `https://${process.env.REPLIT_DEV_DOMAIN}/api/auth/callback`;
+
+function getRedirectUri(req: Request): string {
+  if (process.env.DISCORD_REDIRECT_URI) return process.env.DISCORD_REDIRECT_URI;
+  const host = req.headers["x-forwarded-host"] || req.headers.host || process.env.REPLIT_DEV_DOMAIN;
+  return `https://${host}/api/auth/callback`;
+}
 
 const DISCORD_SCOPES = ["identify", "guilds"].join("%20");
 
@@ -28,8 +33,9 @@ declare module "express-session" {
   }
 }
 
-router.get("/discord", (_req: Request, res: Response) => {
-  const url = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20guilds`;
+router.get("/discord", (req: Request, res: Response) => {
+  const redirectUri = getRedirectUri(req);
+  const url = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20guilds`;
   res.redirect(url);
 });
 
@@ -49,7 +55,7 @@ router.get("/callback", async (req: Request, res: Response) => {
         client_secret: DISCORD_CLIENT_SECRET,
         grant_type: "authorization_code",
         code,
-        redirect_uri: REDIRECT_URI,
+        redirect_uri: getRedirectUri(req),
       }),
     });
 
