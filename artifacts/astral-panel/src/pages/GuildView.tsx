@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRoute } from 'wouter';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { 
   Activity, ShieldAlert, Settings, MessageSquare, 
-  Gift, CheckSquare, ListOrdered, Wrench, Shield, AlertTriangle, Users, Hash, FileText
+  Gift, CheckSquare, ListOrdered, Wrench, Shield, AlertTriangle, Users, Hash, FileText,
+  Search, Zap, UserCheck, Bomb, Filter
 } from 'lucide-react';
 import { 
   useGetGuildConfig, useUpdateGuildConfig, useGetGuildStats,
@@ -253,11 +254,10 @@ function ModerationTab({ guildId }: { guildId: string }) {
   const invalidateWarns = () => queryClient.invalidateQueries({ queryKey: [`/api/guilds/${guildId}/warns`] });
   const invalidateWords = () => queryClient.invalidateQueries({ queryKey: [`/api/guilds/${guildId}/banned-words`] });
 
-  const handleAction = (
-    fn: () => void,
-    successMsg: string,
-    needsMember = true
-  ) => {
+  const selectedMemberInfo = members?.find(m => m.id === selectedMember);
+  const memberWarns = warns?.filter(w => w.userId === selectedMember) ?? [];
+
+  const handleAction = (fn: () => void, needsMember = true) => {
     if (needsMember && !selectedMember) { toast({ title: 'Sélectionnez un membre', variant: 'destructive' }); return; }
     fn();
   };
@@ -309,16 +309,16 @@ function ModerationTab({ guildId }: { guildId: string }) {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 content-start">
-            <CyberButton onClick={() => handleAction(runWarn, 'warn')} isLoading={warningMember} className="text-sm py-2.5" style={{ borderColor: '#facc15', color: '#facc15' }}>
+            <CyberButton onClick={() => handleAction(runWarn)} isLoading={warningMember} className="text-sm py-2.5" style={{ borderColor: '#facc15', color: '#facc15' }}>
               ⚠️ Avertir
             </CyberButton>
-            <CyberButton onClick={() => handleAction(runKick, 'kick')} isLoading={kicking} className="text-sm py-2.5" style={{ borderColor: '#f97316', color: '#f97316' }}>
+            <CyberButton onClick={() => handleAction(runKick)} isLoading={kicking} className="text-sm py-2.5" style={{ borderColor: '#f97316', color: '#f97316' }}>
               👢 Expulser
             </CyberButton>
-            <CyberButton onClick={() => handleAction(runMute, 'mute')} isLoading={muting} className="text-sm py-2.5" style={{ borderColor: '#8b5cf6', color: '#8b5cf6' }}>
+            <CyberButton onClick={() => handleAction(runMute)} isLoading={muting} className="text-sm py-2.5" style={{ borderColor: '#8b5cf6', color: '#8b5cf6' }}>
               🔇 Timeout
             </CyberButton>
-            <CyberButton onClick={() => handleAction(runUnmute, 'unmute')} isLoading={unmuting} className="text-sm py-2.5">
+            <CyberButton onClick={() => handleAction(runUnmute)} isLoading={unmuting} className="text-sm py-2.5">
               🔊 Retirer timeout
             </CyberButton>
             <CyberButton variant="destructive" onClick={() => {
@@ -396,6 +396,49 @@ function ModerationTab({ guildId }: { guildId: string }) {
         </div>
       </CyberCard>
 
+      {/* PROFIL MEMBRE */}
+      {selectedMember && selectedMemberInfo && (
+        <CyberCard>
+          <h2 className="text-lg font-bold text-primary mb-5 flex items-center gap-2">
+            <UserCheck className="w-5 h-5" /> Profil : {selectedMemberInfo.displayName}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+            <div className="bg-background/50 border border-primary/15 p-3 rounded">
+              <p className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1">Identifiant</p>
+              <p className="text-sm font-mono text-foreground">{selectedMemberInfo.id}</p>
+            </div>
+            <div className="bg-background/50 border border-primary/15 p-3 rounded">
+              <p className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1">Pseudo Discord</p>
+              <p className="text-sm text-foreground">@{selectedMemberInfo.username}</p>
+            </div>
+            <div className="bg-background/50 border border-primary/15 p-3 rounded">
+              <p className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1">Avertissements</p>
+              <p className={`text-2xl font-display font-bold ${memberWarns.length > 0 ? 'text-destructive' : 'text-primary'}`}>{memberWarns.length}</p>
+            </div>
+          </div>
+          {memberWarns.length > 0 ? (
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              <p className="text-xs font-display text-muted-foreground uppercase tracking-widest mb-2">Historique des avertissements</p>
+              {memberWarns.map(w => (
+                <div key={w.id} className="bg-destructive/5 border border-destructive/20 p-3 rounded flex justify-between items-start gap-3">
+                  <div>
+                    <p className="text-sm text-foreground">{w.reason}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Par {w.moderatorName} · {format(new Date(w.createdAt), 'd MMM yyyy HH:mm', { locale: fr })}</p>
+                  </div>
+                  <button
+                    onClick={() => delWarn({ guildId, warnId: w.id }, { onSuccess: () => { toast({ title: 'Warn retiré' }); invalidateWarns(); } })}
+                    className="text-destructive/40 hover:text-destructive transition-colors text-lg leading-none flex-shrink-0"
+                    title="Retirer ce warn"
+                  >×</button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground italic">Aucun avertissement pour ce membre.</p>
+          )}
+        </CyberCard>
+      )}
+
       {/* WARNS + MOTS BANNIS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <CyberCard>
@@ -450,10 +493,14 @@ function ModerationTab({ guildId }: { guildId: string }) {
 /* ─────────────────── Sécurité ─────────────────── */
 function SecurityTab({ guildId }: { guildId: string }) {
   const { data: config } = useGetGuildConfig(guildId);
+  const { data: channels } = useGetGuildChannels(guildId);
   const { mutate: toggleMaintenance, isPending: maintPending } = useTriggerMaintenance();
   const { mutate: toggleBreach, isPending: breachPending } = useTriggerBreach();
+  const { mutate: nukeChannel, isPending: nukePending } = useNukeChannel();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const [nukeChannelId, setNukeChannelId] = useState('');
 
   const handleMaintenance = (enabled: boolean) => {
     toggleMaintenance({ guildId, data: { enabled, reason: 'Maintenance via le panel' } }, {
@@ -474,62 +521,118 @@ function SecurityTab({ guildId }: { guildId: string }) {
     });
   };
 
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-      {/* Maintenance */}
-      <CyberCard glowing={config?.maintenanceMode}>
-        <div className="flex items-center gap-4 mb-6">
-          <Wrench className={`w-8 h-8 ${config?.maintenanceMode ? 'text-primary animate-spin' : 'text-muted-foreground'}`} />
-          <div>
-            <h2 className="text-lg font-bold text-foreground">Mode Maintenance</h2>
-            <p className="text-sm text-muted-foreground">Suspendre l'accès pour des mises à jour techniques</p>
-          </div>
-        </div>
-        <div className="flex items-center justify-between p-4 bg-background/50 border border-primary/20 rounded mb-5">
-          <span className="font-body text-sm text-muted-foreground">Statut actuel</span>
-          {config?.maintenanceMode ? (
-            <CyberBadge variant="primary" className="animate-pulse">ACTIF</CyberBadge>
-          ) : (
-            <CyberBadge variant="outline">INACTIF</CyberBadge>
-          )}
-        </div>
-        {config?.maintenanceMode ? (
-          <CyberButton variant="outline" className="w-full" onClick={() => handleMaintenance(false)} isLoading={maintPending}>
-            Désactiver la maintenance
-          </CyberButton>
-        ) : (
-          <CyberButton className="w-full" onClick={() => handleMaintenance(true)} isLoading={maintPending}>
-            Activer la maintenance
-          </CyberButton>
-        )}
-      </CyberCard>
+  const handleNuke = () => {
+    if (!nukeChannelId) { toast({ title: 'Sélectionnez un salon', variant: 'destructive' }); return; }
+    if (!confirm('⚠️ NUKE : Le salon sera supprimé et recréé. Tous les messages seront perdus. Continuer ?')) return;
+    nukeChannel({ guildId, data: { channelId: nukeChannelId } }, {
+      onSuccess: r => { toast({ title: r.message }); setNukeChannelId(''); },
+      onError: () => toast({ title: 'Erreur nuke', variant: 'destructive' }),
+    });
+  };
 
-      {/* Brèche */}
-      <CyberCard glowing={config?.breachMode} className={config?.breachMode ? 'border-destructive/50' : ''}>
+  const protections = [
+    { label: 'Auto-modération', enabled: config?.automodEnabled, icon: <Shield className="w-4 h-4" /> },
+    { label: 'Anti-raid', enabled: config?.antiRaidEnabled, icon: <Zap className="w-4 h-4" /> },
+    { label: 'Anti-spam', enabled: config?.antiSpamEnabled, icon: <AlertTriangle className="w-4 h-4" /> },
+  ];
+
+  return (
+    <div className="space-y-8">
+      {/* Status des protections */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {protections.map(p => (
+          <div key={p.label} className={`flex items-center justify-between p-4 border rounded ${p.enabled ? 'bg-primary/10 border-primary/40' : 'bg-background/50 border-primary/15'}`}>
+            <div className="flex items-center gap-3">
+              <span className={p.enabled ? 'text-primary' : 'text-muted-foreground'}>{p.icon}</span>
+              <span className="font-body text-sm font-medium text-foreground">{p.label}</span>
+            </div>
+            <CyberBadge variant={p.enabled ? 'primary' : 'outline'} className="text-[10px]">
+              {p.enabled ? 'ON' : 'OFF'}
+            </CyberBadge>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground -mt-4">Pour modifier ces protections, rendez-vous dans l'onglet <strong>Configuration</strong>.</p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Maintenance */}
+        <CyberCard glowing={config?.maintenanceMode}>
+          <div className="flex items-center gap-4 mb-6">
+            <Wrench className={`w-8 h-8 ${config?.maintenanceMode ? 'text-primary animate-spin' : 'text-muted-foreground'}`} />
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Mode Maintenance</h2>
+              <p className="text-sm text-muted-foreground">Suspendre l'accès pour des mises à jour techniques</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between p-4 bg-background/50 border border-primary/20 rounded mb-5">
+            <span className="font-body text-sm text-muted-foreground">Statut actuel</span>
+            {config?.maintenanceMode ? (
+              <CyberBadge variant="primary" className="animate-pulse">ACTIF</CyberBadge>
+            ) : (
+              <CyberBadge variant="outline">INACTIF</CyberBadge>
+            )}
+          </div>
+          {config?.maintenanceMode ? (
+            <CyberButton variant="outline" className="w-full" onClick={() => handleMaintenance(false)} isLoading={maintPending}>
+              Désactiver la maintenance
+            </CyberButton>
+          ) : (
+            <CyberButton className="w-full" onClick={() => handleMaintenance(true)} isLoading={maintPending}>
+              Activer la maintenance
+            </CyberButton>
+          )}
+        </CyberCard>
+
+        {/* Brèche */}
+        <CyberCard glowing={config?.breachMode} className={config?.breachMode ? 'border-destructive/50' : ''}>
+          <div className="flex items-center gap-4 mb-6">
+            <ShieldAlert className={`w-8 h-8 ${config?.breachMode ? 'text-destructive animate-pulse' : 'text-muted-foreground'}`} />
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Protocole de Brèche</h2>
+              <p className="text-sm text-muted-foreground">Verrouillage d'urgence complet du serveur</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between p-4 bg-background/50 border border-primary/20 rounded mb-5">
+            <span className="font-body text-sm text-muted-foreground">Statut actuel</span>
+            {config?.breachMode ? (
+              <CyberBadge variant="destructive" className="animate-pulse">CRITIQUE</CyberBadge>
+            ) : (
+              <CyberBadge variant="outline">SÉCURISÉ</CyberBadge>
+            )}
+          </div>
+          {config?.breachMode ? (
+            <CyberButton variant="primary" className="w-full" onClick={() => handleBreach(false)} isLoading={breachPending}>
+              Résoudre la brèche
+            </CyberButton>
+          ) : (
+            <CyberButton variant="destructive" className="w-full" onClick={() => handleBreach(true)} isLoading={breachPending}>
+              Engager le verrouillage
+            </CyberButton>
+          )}
+        </CyberCard>
+      </div>
+
+      {/* Nuke */}
+      <CyberCard className="border-destructive/30">
         <div className="flex items-center gap-4 mb-6">
-          <ShieldAlert className={`w-8 h-8 ${config?.breachMode ? 'text-destructive animate-pulse' : 'text-muted-foreground'}`} />
+          <Bomb className="w-8 h-8 text-destructive" />
           <div>
-            <h2 className="text-lg font-bold text-foreground">Protocole de Brèche</h2>
-            <p className="text-sm text-muted-foreground">Verrouillage d'urgence complet du serveur</p>
+            <h2 className="text-lg font-bold text-foreground">Nuke de salon</h2>
+            <p className="text-sm text-muted-foreground">Supprime et recrée un salon pour effacer tout son historique</p>
           </div>
         </div>
-        <div className="flex items-center justify-between p-4 bg-background/50 border border-primary/20 rounded mb-5">
-          <span className="font-body text-sm text-muted-foreground">Statut actuel</span>
-          {config?.breachMode ? (
-            <CyberBadge variant="destructive" className="animate-pulse">CRITIQUE</CyberBadge>
-          ) : (
-            <CyberBadge variant="outline">SÉCURISÉ</CyberBadge>
-          )}
+        <div className="bg-destructive/10 border border-destructive/30 rounded p-3 mb-5">
+          <p className="text-xs text-destructive font-body">⚠️ Action irréversible — tous les messages du salon seront définitivement supprimés. Le salon sera recréé à l'identique.</p>
         </div>
-        {config?.breachMode ? (
-          <CyberButton variant="primary" className="w-full" onClick={() => handleBreach(false)} isLoading={breachPending}>
-            Résoudre la brèche
+        <div className="flex gap-3">
+          <CyberSelect value={nukeChannelId} onChange={e => setNukeChannelId(e.target.value)} className="flex-1">
+            <option value="">— Sélectionner le salon à nuker —</option>
+            {channels?.map(c => <option key={c.id} value={c.id}>#{c.name}</option>)}
+          </CyberSelect>
+          <CyberButton variant="destructive" isLoading={nukePending} onClick={handleNuke} className="whitespace-nowrap">
+            💥 Nuke
           </CyberButton>
-        ) : (
-          <CyberButton variant="destructive" className="w-full" onClick={() => handleBreach(true)} isLoading={breachPending}>
-            Engager le verrouillage
-          </CyberButton>
-        )}
+        </div>
       </CyberCard>
     </div>
   );
@@ -538,20 +641,24 @@ function SecurityTab({ guildId }: { guildId: string }) {
 /* ─────────────────── Messagerie ─────────────────── */
 function MessagingTab({ guildId }: { guildId: string }) {
   const { data: channels } = useGetGuildChannels(guildId);
+  const { data: members } = useGetGuildMembers(guildId);
   const { mutate: sendSay, isPending: sayPending } = useSendSay();
   const { mutate: sendAnnounce, isPending: annPending } = useSendAnnouncement();
   const { mutate: sendEmbed, isPending: embedPending } = useSendEmbed();
+  const { mutate: sendDm, isPending: dmPending } = useSendDm();
   const { toast } = useToast();
 
   const [sayData,   setSayData]   = useState({ channelId: '', message: '' });
   const [annData,   setAnnData]   = useState({ channelId: '', title: '', message: '', pingEveryone: false });
   const [embedData, setEmbedData] = useState({ channelId: '', title: '', description: '', color: '#00F0FF' });
+  const [dmData,    setDmData]    = useState({ userId: '', message: '' });
 
   const handleSay = (e: React.FormEvent) => {
     e.preventDefault();
     if (!sayData.channelId || !sayData.message) return;
     sendSay({ guildId, data: sayData }, {
-      onSuccess: () => { toast({ title: 'Message envoyé' }); setSayData(p => ({ ...p, message: '' })); }
+      onSuccess: () => { toast({ title: 'Message envoyé' }); setSayData(p => ({ ...p, message: '' })); },
+      onError: () => toast({ title: 'Erreur envoi', variant: 'destructive' }),
     });
   };
 
@@ -559,7 +666,8 @@ function MessagingTab({ guildId }: { guildId: string }) {
     e.preventDefault();
     if (!annData.channelId || !annData.title || !annData.message) return;
     sendAnnounce({ guildId, data: annData }, {
-      onSuccess: () => { toast({ title: 'Annonce diffusée' }); setAnnData(p => ({ ...p, title: '', message: '' })); }
+      onSuccess: () => { toast({ title: 'Annonce diffusée' }); setAnnData(p => ({ ...p, title: '', message: '' })); },
+      onError: () => toast({ title: 'Erreur annonce', variant: 'destructive' }),
     });
   };
 
@@ -567,7 +675,17 @@ function MessagingTab({ guildId }: { guildId: string }) {
     e.preventDefault();
     if (!embedData.channelId || !embedData.title || !embedData.description) return;
     sendEmbed({ guildId, data: embedData }, {
-      onSuccess: () => { toast({ title: 'Embed envoyé' }); setEmbedData(p => ({ ...p, title: '', description: '' })); }
+      onSuccess: () => { toast({ title: 'Embed envoyé' }); setEmbedData(p => ({ ...p, title: '', description: '' })); },
+      onError: () => toast({ title: 'Erreur embed', variant: 'destructive' }),
+    });
+  };
+
+  const handleDm = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dmData.userId || !dmData.message) return;
+    sendDm({ guildId, data: dmData }, {
+      onSuccess: r => { toast({ title: r.message }); setDmData(p => ({ ...p, message: '' })); },
+      onError: () => toast({ title: 'Impossible d\'envoyer le MP (fermés ou bloqué)', variant: 'destructive' }),
     });
   };
 
@@ -615,6 +733,31 @@ function MessagingTab({ guildId }: { guildId: string }) {
               <span className="font-body text-sm">Mentionner @everyone</span>
             </label>
             <CyberButton type="submit" isLoading={annPending} className="w-full" style={{ borderColor: '#ffd700', color: '#ffd700' }}>Diffuser l'annonce</CyberButton>
+          </form>
+        </CyberCard>
+
+        {/* Message Privé (DM) */}
+        <CyberCard>
+          <h2 className="text-lg font-bold mb-5 flex items-center gap-2" style={{ color: '#a78bfa' }}>
+            <MessageSquare className="w-5 h-5" /> Message Privé (DM)
+          </h2>
+          <form onSubmit={handleDm} className="space-y-3">
+            <div>
+              <label className="block font-body text-xs text-muted-foreground uppercase tracking-widest mb-2">Membre destinataire</label>
+              <CyberSelect value={dmData.userId} onChange={e => setDmData({ ...dmData, userId: e.target.value })} required>
+                <option value="">— Choisir un membre —</option>
+                {members?.map(m => <option key={m.id} value={m.id}>{m.displayName} ({m.username})</option>)}
+              </CyberSelect>
+            </div>
+            <textarea 
+              className="w-full h-24 bg-background border border-primary/30 px-4 py-3 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary rounded resize-none"
+              placeholder="Message à envoyer en privé…"
+              value={dmData.message}
+              onChange={e => setDmData({ ...dmData, message: e.target.value })}
+              required
+            />
+            <p className="text-xs text-muted-foreground">Le membre recevra un embed officiel au nom du serveur.</p>
+            <CyberButton type="submit" isLoading={dmPending} className="w-full" style={{ borderColor: '#a78bfa', color: '#a78bfa' }}>Envoyer le MP</CyberButton>
           </form>
         </CyberCard>
       </div>
@@ -859,7 +1002,6 @@ function RulesTab({ guildId }: { guildId: string }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      {/* Formulaire de configuration */}
       <CyberCard>
         <h2 className="text-lg font-bold text-primary mb-6 flex items-center gap-2">
           <FileText className="w-5 h-5" /> Configuration des règles
@@ -874,11 +1016,7 @@ function RulesTab({ guildId }: { guildId: string }) {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block font-body text-sm text-foreground mb-2">Salon de publication</label>
-            <CyberSelect
-              value={form.channelId}
-              onChange={e => setForm(f => ({ ...f, channelId: e.target.value }))}
-              required
-            >
+            <CyberSelect value={form.channelId} onChange={e => setForm(f => ({ ...f, channelId: e.target.value }))} required>
               <option value="">— Choisir un salon —</option>
               {channels?.map(c => <option key={c.id} value={c.id}>#{c.name}</option>)}
             </CyberSelect>
@@ -909,27 +1047,19 @@ function RulesTab({ guildId }: { guildId: string }) {
             <label className="block font-body text-sm text-foreground mb-2">
               Rôle à attribuer à l'acceptation <span className="text-muted-foreground text-xs">(optionnel)</span>
             </label>
-            <CyberSelect
-              value={form.memberRoleId}
-              onChange={e => setForm(f => ({ ...f, memberRoleId: e.target.value }))}
-            >
+            <CyberSelect value={form.memberRoleId} onChange={e => setForm(f => ({ ...f, memberRoleId: e.target.value }))}>
               <option value="">— Aucun rôle —</option>
-              {roles?.map(r => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
+              {roles?.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
             </CyberSelect>
             <p className="text-xs text-muted-foreground mt-1.5">Ce rôle sera automatiquement assigné quand un membre clique sur "J'accepte les règles".</p>
           </div>
 
           <CyberButton type="submit" isLoading={sending} className="w-full">
-            {rules ? 'Mettre à jour & republier les règles' : 'Publier les règles'}
+            {rules?.messageId ? 'Mettre à jour les règles' : 'Publier les règles'}
           </CyberButton>
         </form>
       </CyberCard>
 
-      {/* Aperçu de la configuration actuelle */}
       <div className="space-y-6">
         <CyberCard>
           <h2 className="text-lg font-bold text-foreground mb-5 flex items-center gap-2">
@@ -940,39 +1070,27 @@ function RulesTab({ guildId }: { guildId: string }) {
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-background/50 border border-primary/15 p-3 rounded">
                   <p className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1">Statut</p>
-                  <CyberBadge variant={rules.enabled ? 'primary' : 'outline'}>
-                    {rules.enabled ? 'ACTIF' : 'INACTIF'}
-                  </CyberBadge>
+                  <CyberBadge variant={rules.enabled ? 'primary' : 'outline'}>{rules.enabled ? 'ACTIF' : 'INACTIF'}</CyberBadge>
                 </div>
                 <div className="bg-background/50 border border-primary/15 p-3 rounded">
                   <p className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1">Message envoyé</p>
-                  <CyberBadge variant={rules.messageId ? 'primary' : 'outline'}>
-                    {rules.messageId ? 'OUI' : 'NON'}
-                  </CyberBadge>
+                  <CyberBadge variant={rules.messageId ? 'primary' : 'outline'}>{rules.messageId ? 'OUI' : 'NON'}</CyberBadge>
                 </div>
               </div>
-
               <div className="bg-background/50 border border-primary/15 p-3 rounded">
                 <p className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1.5">Titre</p>
                 <p className="text-sm font-semibold text-foreground">{rules.title}</p>
               </div>
-
               <div className="bg-background/50 border border-primary/15 p-3 rounded">
                 <p className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1.5">Salon configuré</p>
-                <p className="text-sm font-semibold text-primary">
-                  #{channels?.find(c => c.id === rules.channelId)?.name ?? rules.channelId}
-                </p>
+                <p className="text-sm font-semibold text-primary">#{channels?.find(c => c.id === rules.channelId)?.name ?? rules.channelId}</p>
               </div>
-
               {rules.memberRoleId && (
                 <div className="bg-background/50 border border-primary/15 p-3 rounded">
                   <p className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1.5">Rôle attribué</p>
-                  <p className="text-sm font-semibold text-primary">
-                    @{roles?.find(r => r.id === rules.memberRoleId)?.name ?? rules.memberRoleId}
-                  </p>
+                  <p className="text-sm font-semibold text-primary">@{roles?.find(r => r.id === rules.memberRoleId)?.name ?? rules.memberRoleId}</p>
                 </div>
               )}
-
               <div className="bg-background/50 border border-primary/15 p-3 rounded">
                 <p className="text-[11px] font-display text-muted-foreground uppercase tracking-widest mb-1.5">Dernière mise à jour</p>
                 <p className="text-sm text-muted-foreground">{format(new Date(rules.updatedAt), 'd MMM yyyy à HH:mm', { locale: fr })}</p>
@@ -1004,14 +1122,84 @@ function RulesTab({ guildId }: { guildId: string }) {
 }
 
 /* ─────────────────── Journaux ─────────────────── */
+const LOG_COLORS: Record<string, string> = {
+  BAN: 'destructive',
+  KICK: 'destructive',
+  MASSBAN: 'destructive',
+  NUKE: 'destructive',
+  MUTE: 'outline',
+  UNMUTE: 'outline',
+  WARN: 'primary',
+  UNWARN: 'primary',
+  UNBAN: 'primary',
+  BREACH: 'destructive',
+  MAINTENANCE: 'outline',
+  CLEAR: 'outline',
+  DM: 'outline',
+  SAY: 'outline',
+  EMBED: 'outline',
+  ANNOUNCE: 'outline',
+};
+
 function LogsTab({ guildId }: { guildId: string }) {
-  const { data: logs, isLoading } = useGetGuildLogs(guildId, { limit: 100 });
+  const { data: logs, isLoading } = useGetGuildLogs(guildId, { limit: 200 });
+  const [filter, setFilter] = useState('');
+  const [search, setSearch] = useState('');
+
+  const actionTypes = useMemo(() => {
+    if (!logs) return [];
+    const types = [...new Set(logs.map(l => l.action))].sort();
+    return types;
+  }, [logs]);
+
+  const filtered = useMemo(() => {
+    if (!logs) return [];
+    return logs.filter(l => {
+      const matchAction = !filter || l.action === filter;
+      const q = search.toLowerCase();
+      const matchSearch = !q || 
+        l.action.toLowerCase().includes(q) ||
+        (l.targetName ?? '').toLowerCase().includes(q) ||
+        (l.moderatorName ?? '').toLowerCase().includes(q) ||
+        (l.details ?? '').toLowerCase().includes(q);
+      return matchAction && matchSearch;
+    });
+  }, [logs, filter, search]);
 
   if (isLoading) return <p className="text-primary animate-pulse font-display text-sm">Chargement des journaux...</p>;
 
   return (
     <CyberCard>
-      <h2 className="text-lg font-bold text-primary mb-5">Journal d'activité</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+        <h2 className="text-lg font-bold text-primary flex items-center gap-2">
+          <ListOrdered className="w-5 h-5" /> Journal d'activité
+          <span className="text-xs font-normal text-muted-foreground ml-1">({filtered.length} entrées)</span>
+        </h2>
+        <div className="flex gap-2 flex-wrap">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Rechercher…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-8 pr-3 py-1.5 bg-background border border-primary/30 rounded text-xs font-body text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary w-44"
+            />
+          </div>
+          <div className="relative">
+            <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <select
+              value={filter}
+              onChange={e => setFilter(e.target.value)}
+              className="pl-8 pr-3 py-1.5 bg-background border border-primary/30 rounded text-xs font-body text-foreground focus:outline-none focus:border-primary appearance-none"
+            >
+              <option value="">Toutes les actions</option>
+              {actionTypes.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
           <thead className="text-xs text-muted-foreground font-display tracking-widest bg-background/50 border-y border-primary/20">
@@ -1024,13 +1212,13 @@ function LogsTab({ guildId }: { guildId: string }) {
             </tr>
           </thead>
           <tbody>
-            {logs?.map(log => (
+            {filtered.map(log => (
               <tr key={log.id} className="border-b border-primary/10 hover:bg-primary/5 transition-colors">
                 <td className="px-4 py-3 font-display text-xs text-muted-foreground whitespace-nowrap">
                   {format(new Date(log.createdAt), 'dd/MM HH:mm:ss')}
                 </td>
                 <td className="px-4 py-3">
-                  <CyberBadge variant={log.action.includes('DELETE') || log.action.includes('BAN') || log.action.includes('KICK') ? 'destructive' : 'outline'}>
+                  <CyberBadge variant={(LOG_COLORS[log.action] as any) ?? 'outline'}>
                     {log.action}
                   </CyberBadge>
                 </td>
@@ -1041,7 +1229,11 @@ function LogsTab({ guildId }: { guildId: string }) {
             ))}
           </tbody>
         </table>
-        {logs?.length === 0 && <p className="p-6 text-muted-foreground italic text-sm text-center">Aucun événement enregistré.</p>}
+        {filtered.length === 0 && (
+          <p className="p-6 text-muted-foreground italic text-sm text-center">
+            {logs?.length === 0 ? 'Aucun événement enregistré.' : 'Aucun résultat pour ces filtres.'}
+          </p>
+        )}
       </div>
     </CyberCard>
   );
