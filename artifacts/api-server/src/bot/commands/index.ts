@@ -1,7 +1,7 @@
 import { Client } from "discord.js";
 import { kickCommand, banCommand, unbanCommand, muteCommand, unmuteCommand, clearCommand, warnCommand, warnsCommand, unwarnCommand } from "./moderation.js";
 import { lockdownCommand, unlockCommand, nukeCommand, massbanCommand, antiraidCommand, automodCommand, addwordCommand, removewordCommand, bannedwordsCommand } from "./security.js";
-import { maintenanceCommand, maintenanceOffCommand, setlogchannelCommand } from "./system.js";
+import { maintenanceCommand, maintenanceOffCommand, setlogchannelCommand, setwelcomeCommand, setgoodbyeCommand } from "./system.js";
 import { sayCommand, embedCommand, announceCommand, dmCommand } from "./messaging.js";
 import { serverinfoCommand, userinfoCommand, helpCommand } from "./info.js";
 import { giveawayCommand, giveawayEndCommand } from "./giveaway.js";
@@ -32,6 +32,8 @@ export function registerCommands(client: Client): any[] {
     maintenanceCommand,
     maintenanceOffCommand,
     setlogchannelCommand,
+    setwelcomeCommand,
+    setgoodbyeCommand,
     sayCommand,
     embedCommand,
     announceCommand,

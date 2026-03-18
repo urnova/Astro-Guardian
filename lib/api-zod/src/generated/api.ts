@@ -59,6 +59,10 @@ export const GetGuildConfigResponse = zod.object({
   antiSpamEnabled: zod.boolean(),
   maxMentions: zod.number(),
   maxMessagesPerMinute: zod.number(),
+  welcomeChannelId: zod.string().nullish(),
+  welcomeMessage: zod.string().nullish(),
+  goodbyeChannelId: zod.string().nullish(),
+  goodbyeMessage: zod.string().nullish(),
 });
 
 /**
@@ -79,6 +83,10 @@ export const UpdateGuildConfigBody = zod.object({
   antiSpamEnabled: zod.boolean().optional(),
   maxMentions: zod.number().optional(),
   maxMessagesPerMinute: zod.number().optional(),
+  welcomeChannelId: zod.string().nullish(),
+  welcomeMessage: zod.string().nullish(),
+  goodbyeChannelId: zod.string().nullish(),
+  goodbyeMessage: zod.string().nullish(),
 });
 
 export const UpdateGuildConfigResponse = zod.object({
@@ -93,6 +101,10 @@ export const UpdateGuildConfigResponse = zod.object({
   antiSpamEnabled: zod.boolean(),
   maxMentions: zod.number(),
   maxMessagesPerMinute: zod.number(),
+  welcomeChannelId: zod.string().nullish(),
+  welcomeMessage: zod.string().nullish(),
+  goodbyeChannelId: zod.string().nullish(),
+  goodbyeMessage: zod.string().nullish(),
 });
 
 /**

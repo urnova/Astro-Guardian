@@ -107,6 +107,64 @@ export const maintenanceOffCommand = {
   },
 };
 
+export const setwelcomeCommand = {
+  data: new SlashCommandBuilder()
+    .setName("setwelcome")
+    .setDescription("👋 Configurer le message de bienvenue")
+    .setDefaultMemberPermissions(adminPerm)
+    .addChannelOption((o) => o.setName("canal").setDescription("Canal de bienvenue").setRequired(true))
+    .addStringOption((o) => o.setName("message").setDescription("Message (utilisez {user} et {server})").setRequired(false)),
+  async execute(interaction: ChatInputCommandInteraction) {
+    const channel = interaction.options.getChannel("canal", true);
+    const message = interaction.options.getString("message") ?? "Bienvenue {user} sur **{server}** ! 👋";
+    await getOrCreateConfig(interaction.guildId!);
+    await db.update(guildConfigsTable)
+      .set({ welcomeChannelId: channel.id, welcomeMessage: message })
+      .where(eq(guildConfigsTable.guildId, interaction.guildId!));
+
+    const embed = new EmbedBuilder()
+      .setTitle("👋 MESSAGE DE BIENVENUE CONFIGURÉ")
+      .setColor(0x00f0ff)
+      .addFields(
+        { name: "📡 Canal", value: `<#${channel.id}>`, inline: true },
+        { name: "💬 Message", value: `\`${message}\``, inline: false },
+        { name: "ℹ️ Variables", value: "`{user}` → mention | `{username}` → nom | `{server}` → serveur", inline: false },
+      )
+      .setFooter({ text: FOOTER })
+      .setTimestamp();
+    await interaction.reply({ embeds: [embed] });
+  },
+};
+
+export const setgoodbyeCommand = {
+  data: new SlashCommandBuilder()
+    .setName("setgoodbye")
+    .setDescription("👋 Configurer le message d'au revoir")
+    .setDefaultMemberPermissions(adminPerm)
+    .addChannelOption((o) => o.setName("canal").setDescription("Canal d'au revoir").setRequired(true))
+    .addStringOption((o) => o.setName("message").setDescription("Message (utilisez {username} et {server})").setRequired(false)),
+  async execute(interaction: ChatInputCommandInteraction) {
+    const channel = interaction.options.getChannel("canal", true);
+    const message = interaction.options.getString("message") ?? "**{username}** a quitté **{server}**. 👋";
+    await getOrCreateConfig(interaction.guildId!);
+    await db.update(guildConfigsTable)
+      .set({ goodbyeChannelId: channel.id, goodbyeMessage: message })
+      .where(eq(guildConfigsTable.guildId, interaction.guildId!));
+
+    const embed = new EmbedBuilder()
+      .setTitle("👋 MESSAGE D'AU REVOIR CONFIGURÉ")
+      .setColor(0xff6b35)
+      .addFields(
+        { name: "📡 Canal", value: `<#${channel.id}>`, inline: true },
+        { name: "💬 Message", value: `\`${message}\``, inline: false },
+        { name: "ℹ️ Variables", value: "`{username}` → nom | `{server}` → serveur", inline: false },
+      )
+      .setFooter({ text: FOOTER })
+      .setTimestamp();
+    await interaction.reply({ embeds: [embed] });
+  },
+};
+
 export const setlogchannelCommand = {
   data: new SlashCommandBuilder()
     .setName("setlogchannel")

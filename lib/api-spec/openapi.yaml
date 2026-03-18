@@ -978,6 +978,18 @@ components:
           type: integer
         maxMessagesPerMinute:
           type: integer
+        welcomeChannelId:
+          type: string
+          nullable: true
+        welcomeMessage:
+          type: string
+          nullable: true
+        goodbyeChannelId:
+          type: string
+          nullable: true
+        goodbyeMessage:
+          type: string
+          nullable: true
       required: [guildId, maintenanceMode, breachMode, automodEnabled, antiRaidEnabled, antiSpamEnabled, maxMentions, maxMessagesPerMinute]
 
     UpdateGuildConfigBody:
@@ -1006,6 +1018,18 @@ components:
           type: integer
         maxMessagesPerMinute:
           type: integer
+        welcomeChannelId:
+          type: string
+          nullable: true
+        welcomeMessage:
+          type: string
+          nullable: true
+        goodbyeChannelId:
+          type: string
+          nullable: true
+        goodbyeMessage:
+          type: string
+          nullable: true
 
     GuildStats:
       type: object

@@ -14,6 +14,10 @@ export const guildConfigsTable = pgTable("guild_configs", {
   antiSpamEnabled: boolean("anti_spam_enabled").default(true).notNull(),
   maxMentions: integer("max_mentions").default(5).notNull(),
   maxMessagesPerMinute: integer("max_messages_per_minute").default(10).notNull(),
+  welcomeChannelId: text("welcome_channel_id"),
+  welcomeMessage: text("welcome_message"),
+  goodbyeChannelId: text("goodbye_channel_id"),
+  goodbyeMessage: text("goodbye_message"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 

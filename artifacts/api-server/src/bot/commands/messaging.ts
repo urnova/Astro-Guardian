@@ -126,16 +126,8 @@ export const dmCommand = {
     if (!member) return interaction.reply({ content: "❌ Membre introuvable.", ephemeral: true });
     const message = interaction.options.getString("message", true);
 
-    const dmEmbed = new EmbedBuilder()
-      .setTitle("📨 Message du serveur")
-      .setDescription(message)
-      .setColor(0x0099ff)
-      .setAuthor({ name: interaction.guild!.name, iconURL: interaction.guild!.iconURL() ?? undefined })
-      .setFooter({ text: `Message officiel de ${interaction.guild!.name}` })
-      .setTimestamp();
-
     try {
-      await member.send({ embeds: [dmEmbed] });
+      await member.send(message);
       await interaction.reply({ content: `✅ Message privé envoyé à ${member}`, ephemeral: true });
       await addLog({ guildId: interaction.guildId!, action: "DM", targetId: member.id, targetName: member.user.username, moderatorId: interaction.user.id, moderatorName: interaction.user.username });
     } catch {
@@ -143,4 +135,3 @@ export const dmCommand = {
     }
   },
 };
-

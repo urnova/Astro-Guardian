@@ -17,4 +17,8 @@ export interface UpdateGuildConfigBody {
   antiSpamEnabled?: boolean;
   maxMentions?: number;
   maxMessagesPerMinute?: number;
+  welcomeChannelId?: string | null;
+  welcomeMessage?: string | null;
+  goodbyeChannelId?: string | null;
+  goodbyeMessage?: string | null;
 }

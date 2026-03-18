@@ -5,7 +5,7 @@ import { fr } from 'date-fns/locale';
 import { 
   Activity, ShieldAlert, Settings, MessageSquare, 
   Gift, CheckSquare, ListOrdered, Wrench, Shield, AlertTriangle, Users, Hash, FileText,
-  Search, Zap, UserCheck, Bomb, Filter
+  Search, Zap, UserCheck, Bomb, Filter, UserPlus
 } from 'lucide-react';
 import { 
   useGetGuildConfig, useUpdateGuildConfig, useGetGuildStats,
@@ -24,11 +24,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { CyberCard, CyberButton, CyberInput, CyberBadge, CyberSelect } from '@/components/CyberUI';
 import { useToast } from '@/hooks/use-toast';
 
-type Tab = 'overview' | 'config' | 'moderation' | 'security' | 'messaging' | 'giveaways' | 'surveys' | 'rules' | 'logs';
+type Tab = 'overview' | 'config' | 'welcome' | 'moderation' | 'security' | 'messaging' | 'giveaways' | 'surveys' | 'rules' | 'logs';
 
 const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'overview',    label: 'Vue d\'ensemble', icon: <Activity className="w-4 h-4" /> },
   { id: 'config',      label: 'Configuration',   icon: <Settings className="w-4 h-4" /> },
+  { id: 'welcome',     label: 'Bienvenue',        icon: <UserPlus className="w-4 h-4" /> },
   { id: 'moderation',  label: 'Modération',       icon: <ShieldAlert className="w-4 h-4" /> },
   { id: 'security',    label: 'Sécurité',         icon: <Shield className="w-4 h-4" /> },
   { id: 'messaging',   label: 'Messagerie',       icon: <MessageSquare className="w-4 h-4" /> },
@@ -46,26 +47,27 @@ export default function GuildView() {
   if (!guildId) return <div className="text-destructive p-4">Serveur invalide.</div>;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-20">
-      <div className="border-b border-primary/20 pb-4">
-        <h1 className="text-2xl font-bold text-foreground tracking-wide">Gestion du serveur</h1>
-        <p className="text-xs font-display text-primary/60 mt-1 tracking-widest">ID : {guildId}</p>
+    <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto pb-20">
+      <div className="border-b border-primary/20 pb-3 sm:pb-4">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-wide">Gestion du serveur</h1>
+        <p className="text-xs font-display text-primary/60 mt-1 tracking-widest truncate">ID : {guildId}</p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex overflow-x-auto gap-1.5 pb-1">
+      {/* Tabs — scrollable horizontally on mobile, icons-only on small screens */}
+      <div className="flex overflow-x-auto gap-1 sm:gap-1.5 pb-1 scrollbar-none">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 font-body text-sm font-medium transition-all whitespace-nowrap rounded
+            title={tab.label}
+            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 font-body text-xs sm:text-sm font-medium transition-all whitespace-nowrap rounded
               ${activeTab === tab.id 
                 ? 'bg-primary/20 text-primary border border-primary/50' 
                 : 'bg-background/60 border border-primary/15 text-muted-foreground hover:border-primary/40 hover:text-primary'
               }`}
           >
             {tab.icon}
-            {tab.label}
+            <span className="hidden sm:inline">{tab.label}</span>
           </button>
         ))}
       </div>
@@ -73,6 +75,7 @@ export default function GuildView() {
       <div>
         {activeTab === 'overview'   && <OverviewTab   guildId={guildId} />}
         {activeTab === 'config'     && <ConfigTab     guildId={guildId} />}
+        {activeTab === 'welcome'    && <WelcomeTab    guildId={guildId} />}
         {activeTab === 'moderation' && <ModerationTab guildId={guildId} />}
         {activeTab === 'security'   && <SecurityTab   guildId={guildId} />}
         {activeTab === 'messaging'  && <MessagingTab  guildId={guildId} />}
@@ -1236,5 +1239,142 @@ function LogsTab({ guildId }: { guildId: string }) {
         )}
       </div>
     </CyberCard>
+  );
+}
+
+/* ─────────────────── Bienvenue / Au revoir ─────────────────── */
+function WelcomeTab({ guildId }: { guildId: string }) {
+  const { data: config, isLoading } = useGetGuildConfig(guildId);
+  const { data: channels } = useGetGuildChannels(guildId);
+  const { mutate: updateConfig, isPending } = useUpdateGuildConfig();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [welcome, setWelcome] = useState({ channelId: '', message: 'Bienvenue {user} sur **{server}** ! 👋' });
+  const [goodbye, setGoodbye] = useState({ channelId: '', message: '**{username}** a quitté **{server}**. 👋' });
+
+  React.useEffect(() => {
+    if (config) {
+      setWelcome({ channelId: config.welcomeChannelId || '', message: config.welcomeMessage || 'Bienvenue {user} sur **{server}** ! 👋' });
+      setGoodbye({ channelId: config.goodbyeChannelId || '', message: config.goodbyeMessage || '**{username}** a quitté **{server}**. 👋' });
+    }
+  }, [config]);
+
+  const save = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateConfig({
+      guildId,
+      data: {
+        welcomeChannelId: welcome.channelId || null,
+        welcomeMessage: welcome.message || null,
+        goodbyeChannelId: goodbye.channelId || null,
+        goodbyeMessage: goodbye.message || null,
+      } as any,
+    }, {
+      onSuccess: () => {
+        toast({ title: 'Messages configurés', description: 'Les messages de bienvenue et au revoir ont été enregistrés.' });
+        queryClient.invalidateQueries({ queryKey: [`/api/guilds/${guildId}/config`] });
+      },
+      onError: () => toast({ title: 'Erreur', variant: 'destructive' }),
+    });
+  };
+
+  if (isLoading) return <p className="text-primary animate-pulse text-sm">Chargement...</p>;
+
+  const placeholder = (
+    <p className="text-xs text-muted-foreground mt-2 font-display tracking-wide">
+      Variables disponibles : <code className="text-primary">{'{user}'}</code> → mention •{' '}
+      <code className="text-primary">{'{username}'}</code> → nom •{' '}
+      <code className="text-primary">{'{server}'}</code> → nom du serveur
+    </p>
+  );
+
+  return (
+    <form onSubmit={save} className="space-y-5 max-w-2xl">
+
+      {/* Bienvenue */}
+      <CyberCard>
+        <h2 className="text-base sm:text-lg font-bold text-primary mb-5 flex items-center gap-2">
+          <UserPlus className="w-5 h-5" /> Message de bienvenue
+        </h2>
+        <div className="space-y-4">
+          <div>
+            <label className="block font-body text-sm text-foreground mb-2">Salon de bienvenue</label>
+            <CyberSelect value={welcome.channelId} onChange={e => setWelcome(w => ({ ...w, channelId: e.target.value }))}>
+              <option value="">— Désactivé —</option>
+              {channels?.map(c => <option key={c.id} value={c.id}>#{c.name}</option>)}
+            </CyberSelect>
+          </div>
+          <div>
+            <label className="block font-body text-sm text-foreground mb-2">Message de bienvenue</label>
+            <textarea
+              value={welcome.message}
+              onChange={e => setWelcome(w => ({ ...w, message: e.target.value }))}
+              rows={3}
+              className="w-full px-3 py-2 bg-background border border-primary/30 rounded font-body text-sm text-foreground focus:outline-none focus:border-primary resize-none"
+              placeholder="Bienvenue {user} sur **{server}** ! 👋"
+            />
+            {placeholder}
+          </div>
+
+          {/* Aperçu */}
+          {welcome.message && (
+            <div className="bg-[#313338] rounded p-3 border border-white/10">
+              <p className="text-[10px] text-white/30 font-display mb-1.5 uppercase tracking-widest">Aperçu Discord</p>
+              <div className="flex items-start gap-2">
+                <div className="w-8 h-8 rounded-full bg-primary/40 shrink-0 flex items-center justify-center text-[11px] font-bold text-primary">A</div>
+                <div>
+                  <span className="text-white/80 text-xs font-semibold">Astral Bot</span>
+                  <p className="text-white text-sm mt-0.5">{welcome.message.replace(/{user}/g, '@NouveauMembre').replace(/{username}/g, 'NouveauMembre').replace(/{server}/g, 'Mon Serveur')}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </CyberCard>
+
+      {/* Au revoir */}
+      <CyberCard>
+        <h2 className="text-base sm:text-lg font-bold text-orange-400 mb-5 flex items-center gap-2">
+          <Users className="w-5 h-5" /> Message d'au revoir
+        </h2>
+        <div className="space-y-4">
+          <div>
+            <label className="block font-body text-sm text-foreground mb-2">Salon d'au revoir</label>
+            <CyberSelect value={goodbye.channelId} onChange={e => setGoodbye(g => ({ ...g, channelId: e.target.value }))}>
+              <option value="">— Désactivé —</option>
+              {channels?.map(c => <option key={c.id} value={c.id}>#{c.name}</option>)}
+            </CyberSelect>
+          </div>
+          <div>
+            <label className="block font-body text-sm text-foreground mb-2">Message d'au revoir</label>
+            <textarea
+              value={goodbye.message}
+              onChange={e => setGoodbye(g => ({ ...g, message: e.target.value }))}
+              rows={3}
+              className="w-full px-3 py-2 bg-background border border-primary/30 rounded font-body text-sm text-foreground focus:outline-none focus:border-primary resize-none"
+              placeholder="**{username}** a quitté **{server}**. 👋"
+            />
+            {placeholder}
+          </div>
+
+          {/* Aperçu */}
+          {goodbye.message && (
+            <div className="bg-[#313338] rounded p-3 border border-white/10">
+              <p className="text-[10px] text-white/30 font-display mb-1.5 uppercase tracking-widest">Aperçu Discord</p>
+              <div className="flex items-start gap-2">
+                <div className="w-8 h-8 rounded-full bg-orange-400/40 shrink-0 flex items-center justify-center text-[11px] font-bold text-orange-400">A</div>
+                <div>
+                  <span className="text-white/80 text-xs font-semibold">Astral Bot</span>
+                  <p className="text-white text-sm mt-0.5">{goodbye.message.replace(/{user}/g, '@Membre').replace(/{username}/g, 'Membre').replace(/{server}/g, 'Mon Serveur')}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </CyberCard>
+
+      <CyberButton type="submit" isLoading={isPending} className="w-full">Enregistrer les messages</CyberButton>
+    </form>
   );
 }

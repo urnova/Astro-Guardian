@@ -40,6 +40,10 @@ export interface GuildConfig {
   antiSpamEnabled: boolean;
   maxMentions: number;
   maxMessagesPerMinute: number;
+  welcomeChannelId?: string | null;
+  welcomeMessage?: string | null;
+  goodbyeChannelId?: string | null;
+  goodbyeMessage?: string | null;
 }
 
 export interface UpdateGuildConfigBody {
@@ -53,6 +57,10 @@ export interface UpdateGuildConfigBody {
   antiSpamEnabled?: boolean;
   maxMentions?: number;
   maxMessagesPerMinute?: number;
+  welcomeChannelId?: string | null;
+  welcomeMessage?: string | null;
+  goodbyeChannelId?: string | null;
+  goodbyeMessage?: string | null;
 }
 
 export interface GuildStats {
