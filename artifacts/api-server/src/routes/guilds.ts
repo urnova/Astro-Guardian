@@ -10,7 +10,7 @@ import {
   logsTable,
   serverRulesTable,
 } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, count } from "drizzle-orm";
 import { getBotClient } from "../bot/index.js";
 import { getOrCreateConfig } from "../bot/lib/db.js";
 import { ChannelType, EmbedBuilder, TextChannel, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
@@ -52,21 +52,23 @@ router.get("/:guildId/stats", async (req, res) => {
     const { guildId } = req.params;
     const guild = await getGuild(guildId);
 
-    const [warnRows, giveawayRows, surveyRows, bannedWordRows] = await Promise.all([
-      db.select().from(warnsTable).where(eq(warnsTable.guildId, guildId)),
-      db.select().from(giveawaysTable).where(eq(giveawaysTable.guildId, guildId)),
-      db.select().from(surveysTable).where(eq(surveysTable.guildId, guildId)),
-      db.select().from(bannedWordsTable).where(eq(bannedWordsTable.guildId, guildId)),
+    const [[warnRes], [giveRes], [survRes], [wordRes], [logRes]] = await Promise.all([
+      db.select({ c: count() }).from(warnsTable).where(eq(warnsTable.guildId, guildId)),
+      db.select({ c: count() }).from(giveawaysTable).where(eq(giveawaysTable.guildId, guildId)),
+      db.select({ c: count() }).from(surveysTable).where(eq(surveysTable.guildId, guildId)),
+      db.select({ c: count() }).from(bannedWordsTable).where(eq(bannedWordsTable.guildId, guildId)),
+      db.select({ c: count() }).from(logsTable).where(eq(logsTable.guildId, guildId)),
     ]);
 
     res.json({
       memberCount: guild?.memberCount ?? 0,
       channelCount: guild?.channels.cache.size ?? 0,
       roleCount: guild?.roles.cache.size ?? 0,
-      warnCount: warnRows.length,
-      giveawayCount: giveawayRows.length,
-      surveyCount: surveyRows.length,
-      bannedWordCount: bannedWordRows.length,
+      warnCount: Number(warnRes.c),
+      giveawayCount: Number(giveRes.c),
+      surveyCount: Number(survRes.c),
+      bannedWordCount: Number(wordRes.c),
+      logCount: Number(logRes.c),
       boostLevel: guild?.premiumTier ?? 0,
       boostCount: guild?.premiumSubscriptionCount ?? 0,
     });

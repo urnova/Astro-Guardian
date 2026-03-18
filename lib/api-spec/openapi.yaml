@@ -1052,7 +1052,9 @@ components:
           type: integer
         boostCount:
           type: integer
-      required: [memberCount, channelCount, roleCount, warnCount, giveawayCount, surveyCount, bannedWordCount, boostLevel, boostCount]
+        logCount:
+          type: integer
+      required: [memberCount, channelCount, roleCount, warnCount, giveawayCount, surveyCount, bannedWordCount, boostLevel, boostCount, logCount]
 
     DiscordChannel:
       type: object

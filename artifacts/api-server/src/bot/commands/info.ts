@@ -5,6 +5,9 @@ import {
   GuildMember,
   PermissionFlagsBits,
 } from "discord.js";
+import { db } from "@workspace/db";
+import { warnsTable, bannedWordsTable, giveawaysTable, surveysTable, logsTable } from "@workspace/db";
+import { eq, count } from "drizzle-orm";
 
 const ASTRAL_COLOR = 0x00f0ff;
 const FOOTER = "⬡ ASTRAL TECHNOLOGIE — NEXUS v2.0";
@@ -190,6 +193,11 @@ export const helpCommand = {
           name: "📜 RÈGLEMENT",
           value: "`/rules` — Envoyer le règlement du serveur",
           inline: false,
+        },
+        {
+          name: "🔗 PANEL & STATISTIQUES",
+          value: "`/panel` — Lien du panneau de contrôle\n`/stats` — Statistiques du serveur",
+          inline: false,
         }
       );
     }
@@ -212,6 +220,71 @@ export const helpCommand = {
       .setTimestamp();
 
     await interaction.reply({ embeds: [embed], ephemeral: true });
+  },
+};
+
+export const statsCommand = {
+  data: new SlashCommandBuilder()
+    .setName("stats")
+    .setDescription("📊 Afficher les statistiques complètes du serveur"),
+  async execute(interaction: ChatInputCommandInteraction) {
+    await interaction.deferReply();
+    const guildId = interaction.guildId!;
+    const guild = interaction.guild!;
+    await guild.members.fetch().catch(() => {});
+
+    const [[warnRes], [wordRes], [giveRes], [survRes], [logRes]] = await Promise.all([
+      db.select({ c: count() }).from(warnsTable).where(eq(warnsTable.guildId, guildId)),
+      db.select({ c: count() }).from(bannedWordsTable).where(eq(bannedWordsTable.guildId, guildId)),
+      db.select({ c: count() }).from(giveawaysTable).where(eq(giveawaysTable.guildId, guildId)),
+      db.select({ c: count() }).from(surveysTable).where(eq(surveysTable.guildId, guildId)),
+      db.select({ c: count() }).from(logsTable).where(eq(logsTable.guildId, guildId)),
+    ]);
+
+    const bots = guild.members.cache.filter(m => m.user.bot).size;
+    const humans = guild.memberCount - bots;
+
+    const embed = new EmbedBuilder()
+      .setTitle(`📊 STATISTIQUES — ${guild.name.toUpperCase()}`)
+      .setThumbnail(guild.iconURL({ size: 256 }))
+      .setColor(ASTRAL_COLOR)
+      .setDescription(`\`\`\`css\n[RAPPORT STATISTIQUE COMPLET]\n[ID : ${guildId}]\n\`\`\``)
+      .addFields(
+        {
+          name: "👥 MEMBRES",
+          value: `\`\`\`yaml\nHumains : ${humans}\nBots    : ${bots}\nTotal   : ${guild.memberCount}\`\`\``,
+          inline: true,
+        },
+        {
+          name: "📡 INFRASTRUCTURE",
+          value: `\`\`\`yaml\nSalons : ${guild.channels.cache.size}\nRôles  : ${guild.roles.cache.size}\nBoosts : ${guild.premiumSubscriptionCount ?? 0}\`\`\``,
+          inline: true,
+        },
+        {
+          name: "⚠️ MODÉRATION",
+          value: `\`\`\`yaml\nAvertissements : ${warnRes.c}\nMots bannis    : ${wordRes.c}\`\`\``,
+          inline: true,
+        },
+        {
+          name: "🎉 ACTIVITÉS",
+          value: `\`\`\`yaml\nGiveaways      : ${giveRes.c}\nQuestionnaires : ${survRes.c}\`\`\``,
+          inline: true,
+        },
+        {
+          name: "📋 JOURNAL",
+          value: `\`\`\`yaml\nÉvénements loggés : ${logRes.c}\`\`\``,
+          inline: true,
+        },
+        {
+          name: "🚀 BOOST",
+          value: `\`\`\`fix\nNiveau ${guild.premiumTier} — ${guild.premiumSubscriptionCount ?? 0} boost(s)\`\`\``,
+          inline: true,
+        },
+      )
+      .setFooter({ text: FOOTER })
+      .setTimestamp();
+
+    await interaction.editReply({ embeds: [embed] });
   },
 };
 

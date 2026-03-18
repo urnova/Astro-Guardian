@@ -97,11 +97,13 @@ function OverviewTab({ guildId }: { guildId: string }) {
 
   const items = [
     { label: 'Membres',            value: stats.memberCount,     icon: <Users className="w-5 h-5 text-primary" /> },
-    { label: 'Salons actifs',       value: stats.channelCount,    icon: <Hash className="w-5 h-5 text-primary" /> },
-    { label: 'Avertissements',      value: stats.warnCount,       icon: <ShieldAlert className="w-5 h-5 text-destructive" /> },
-    { label: 'Mots bannis',         value: stats.bannedWordCount, icon: <AlertTriangle className="w-5 h-5 text-destructive" /> },
-    { label: 'Giveaways',           value: stats.giveawayCount,   icon: <Gift className="w-5 h-5 text-primary" /> },
-    { label: 'Questionnaires',      value: stats.surveyCount,     icon: <CheckSquare className="w-5 h-5 text-primary" /> },
+    { label: 'Salons actifs',      value: stats.channelCount,    icon: <Hash className="w-5 h-5 text-primary" /> },
+    { label: 'Rôles',              value: stats.roleCount,       icon: <Zap className="w-5 h-5 text-primary" /> },
+    { label: 'Avertissements',     value: stats.warnCount,       icon: <ShieldAlert className="w-5 h-5 text-destructive" /> },
+    { label: 'Mots bannis',        value: stats.bannedWordCount, icon: <AlertTriangle className="w-5 h-5 text-destructive" /> },
+    { label: 'Giveaways',          value: stats.giveawayCount,   icon: <Gift className="w-5 h-5 text-primary" /> },
+    { label: 'Questionnaires',     value: stats.surveyCount,     icon: <CheckSquare className="w-5 h-5 text-primary" /> },
+    { label: 'Événements journaux', value: stats.logCount,       icon: <ListOrdered className="w-5 h-5 text-primary" /> },
   ];
 
   return (

@@ -16,4 +16,5 @@ export interface GuildStats {
   bannedWordCount: number;
   boostLevel: number;
   boostCount: number;
+  logCount: number;
 }

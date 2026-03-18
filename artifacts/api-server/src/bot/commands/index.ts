@@ -3,7 +3,7 @@ import { kickCommand, banCommand, unbanCommand, muteCommand, unmuteCommand, clea
 import { lockdownCommand, unlockCommand, nukeCommand, massbanCommand, antiraidCommand, automodCommand, addwordCommand, removewordCommand, bannedwordsCommand } from "./security.js";
 import { maintenanceCommand, maintenanceOffCommand, setlogchannelCommand, setwelcomeCommand, setgoodbyeCommand, panelCommand } from "./system.js";
 import { sayCommand, embedCommand, announceCommand, dmCommand } from "./messaging.js";
-import { serverinfoCommand, userinfoCommand, helpCommand } from "./info.js";
+import { serverinfoCommand, userinfoCommand, helpCommand, statsCommand } from "./info.js";
 import { giveawayCommand, giveawayEndCommand } from "./giveaway.js";
 import { surveyCommand, submitCommand } from "./survey.js";
 import { chatCommand } from "./chat.js";
@@ -42,6 +42,7 @@ export function registerCommands(client: Client): any[] {
     serverinfoCommand,
     userinfoCommand,
     helpCommand,
+    statsCommand,
     giveawayCommand,
     giveawayEndCommand,
     surveyCommand,

@@ -124,6 +124,7 @@ export const GetGuildStatsResponse = zod.object({
   bannedWordCount: zod.number(),
   boostLevel: zod.number(),
   boostCount: zod.number(),
+  logCount: zod.number(),
 });
 
 /**
