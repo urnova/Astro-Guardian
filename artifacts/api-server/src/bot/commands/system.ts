@@ -165,6 +165,29 @@ export const setgoodbyeCommand = {
   },
 };
 
+export const panelCommand = {
+  data: new SlashCommandBuilder()
+    .setName("panel")
+    .setDescription("🔗 Obtenir le lien du panneau de contrôle Astral")
+    .setDefaultMemberPermissions(adminPerm),
+  async execute(interaction: ChatInputCommandInteraction) {
+    const panelUrl = process.env.PANEL_URL ?? "https://astro-guardian--eoprivate42.replit.app";
+    const embed = new EmbedBuilder()
+      .setTitle("⬡ PANNEAU DE CONTRÔLE ASTRAL")
+      .setColor(0x00f0ff)
+      .setDescription(
+        `\`\`\`css\n[ACCÈS AU NEXUS DE CONTRÔLE]\n[INTERFACE ADMINISTRATEUR]\n\`\`\``
+      )
+      .addFields(
+        { name: "🔗 LIEN D'ACCÈS", value: panelUrl, inline: false },
+        { name: "ℹ️ INFO", value: "Connexion via Discord OAuth — Réservé aux administrateurs", inline: false },
+      )
+      .setFooter({ text: `${FOOTER} | PANEL v2.0` })
+      .setTimestamp();
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+  },
+};
+
 export const setlogchannelCommand = {
   data: new SlashCommandBuilder()
     .setName("setlogchannel")

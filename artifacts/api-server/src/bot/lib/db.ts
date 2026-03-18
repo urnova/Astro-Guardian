@@ -45,6 +45,16 @@ const ACTION_COLORS: Record<string, number> = {
   MEMBER_LEAVE: 0xaaaaaa,
   ANTIRAID: 0xff6600,
   AUTOMOD: 0x9900ff,
+  ANNOUNCE: 0xffd700,
+  SAY: 0x00f0ff,
+  EMBED: 0x0099ff,
+  DM: 0x5865f2,
+  RULES_SETUP: 0x00f0ff,
+  RULES_ACCEPTED: 0x00ff88,
+  SURVEY_CREATE: 0x5865f2,
+  SUBMIT_CREATE: 0x00ff88,
+  GIVEAWAY_START: 0xff6b9d,
+  GIVEAWAY_END: 0xaaaaaa,
 };
 
 const ACTION_ICONS: Record<string, string> = {
@@ -64,6 +74,16 @@ const ACTION_ICONS: Record<string, string> = {
   AUTOMOD_DELETE: "🤖",
   MEMBER_JOIN: "📥",
   MEMBER_LEAVE: "📤",
+  ANNOUNCE: "📢",
+  SAY: "💬",
+  EMBED: "📋",
+  DM: "📨",
+  RULES_SETUP: "📋",
+  RULES_ACCEPTED: "✅",
+  SURVEY_CREATE: "📝",
+  SUBMIT_CREATE: "📬",
+  GIVEAWAY_START: "🎉",
+  GIVEAWAY_END: "🏁",
 };
 
 export async function addLog(data: {
@@ -75,7 +95,12 @@ export async function addLog(data: {
   moderatorName?: string;
   details?: string;
 }) {
-  await db.insert(logsTable).values(data);
+  try {
+    await db.insert(logsTable).values(data);
+  } catch (err) {
+    console.error("[addLog] Erreur insertion DB:", err);
+    return;
+  }
 
   try {
     if (!getBotClientFn) return;
@@ -129,5 +154,7 @@ export async function addLog(data: {
     embed.setFooter({ text: `⬡ ASTRAL TECHNOLOGIE — SYSTÈME DE JOURNAL` });
 
     await channel.send({ embeds: [embed] });
-  } catch {}
+  } catch (err) {
+    console.error("[addLog] Erreur envoi Discord:", err);
+  }
 }

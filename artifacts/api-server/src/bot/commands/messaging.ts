@@ -10,6 +10,15 @@ import { addLog } from "../lib/db.js";
 
 const adminPerm = PermissionFlagsBits.Administrator;
 
+const ANNOUNCE_TYPES: Record<string, { label: string; icon: string; color: number; separator: string }> = {
+  annonce:       { label: "ANNONCE OFFICIELLE",     icon: "📢", color: 0xffd700, separator: "🔔" },
+  "mise-a-jour": { label: "MISE À JOUR",            icon: "🔄", color: 0x00aaff, separator: "🔵" },
+  evenement:     { label: "ÉVÉNEMENT",              icon: "🎉", color: 0xff6b9d, separator: "🎊" },
+  maintenance:   { label: "MAINTENANCE PLANIFIÉE",  icon: "🔧", color: 0xffa500, separator: "⚙️" },
+  urgent:        { label: "ALERTE URGENTE",         icon: "🚨", color: 0xff0000, separator: "🔴" },
+  information:   { label: "INFORMATION",            icon: "ℹ️", color: 0x00f0ff, separator: "🔷" },
+};
+
 export const sayCommand = {
   data: new SlashCommandBuilder()
     .setName("say")
@@ -84,30 +93,47 @@ export const announceCommand = {
     .setDefaultMemberPermissions(adminPerm)
     .addStringOption((o) => o.setName("titre").setDescription("Titre de l'annonce").setRequired(true))
     .addStringOption((o) => o.setName("message").setDescription("Contenu de l'annonce").setRequired(true))
+    .addStringOption((o) =>
+      o.setName("type")
+        .setDescription("Type d'annonce")
+        .setRequired(false)
+        .addChoices(
+          { name: "📢 Annonce générale", value: "annonce" },
+          { name: "🔄 Mise à jour", value: "mise-a-jour" },
+          { name: "🎉 Événement", value: "evenement" },
+          { name: "🔧 Maintenance planifiée", value: "maintenance" },
+          { name: "🚨 Alerte urgente", value: "urgent" },
+          { name: "ℹ️ Information", value: "information" },
+        )
+    )
     .addChannelOption((o) => o.setName("canal").setDescription("Canal cible").setRequired(false))
     .addBooleanOption((o) => o.setName("ping_everyone").setDescription("Mentionner @everyone ?").setRequired(false)),
   async execute(interaction: ChatInputCommandInteraction) {
     const title = interaction.options.getString("titre", true);
     const message = interaction.options.getString("message", true);
+    const typeKey = interaction.options.getString("type") ?? "annonce";
     const channel = (interaction.options.getChannel("canal") ?? interaction.channel) as TextChannel;
     const pingEveryone = interaction.options.getBoolean("ping_everyone") ?? false;
 
+    const typeInfo = ANNOUNCE_TYPES[typeKey] ?? ANNOUNCE_TYPES["annonce"];
+
     const embed = new EmbedBuilder()
-      .setTitle(`📢 ${title}`)
+      .setTitle(`${typeInfo.icon} ${title}`)
       .setDescription(message)
-      .setColor(0xffd700)
-      .setAuthor({ name: "ANNONCE OFFICIELLE", iconURL: interaction.guild!.iconURL() ?? undefined })
-      .setFooter({ text: `Annonce officielle • ${interaction.guild!.name}` })
+      .setColor(typeInfo.color)
+      .setAuthor({ name: typeInfo.label, iconURL: interaction.guild!.iconURL() ?? undefined })
+      .setFooter({ text: `${typeInfo.label} • ${interaction.guild!.name}` })
       .setTimestamp();
 
     const content = pingEveryone ? "@everyone" : "";
+    const sep = typeInfo.separator.repeat(8);
 
     try {
-      await channel.send("🔔".repeat(10));
+      await channel.send(sep);
       await channel.send({ content, embeds: [embed] });
-      await channel.send("🔔".repeat(10));
-      await interaction.reply({ content: `✅ Annonce publiée dans <#${channel.id}>`, ephemeral: true });
-      await addLog({ guildId: interaction.guildId!, action: "ANNOUNCE", moderatorId: interaction.user.id, moderatorName: interaction.user.username, details: title });
+      await channel.send(sep);
+      await interaction.reply({ content: `✅ Annonce **${typeInfo.label}** publiée dans <#${channel.id}>`, ephemeral: true });
+      await addLog({ guildId: interaction.guildId!, action: "ANNOUNCE", moderatorId: interaction.user.id, moderatorName: interaction.user.username, details: `[${typeInfo.label}] ${title}` });
     } catch {
       await interaction.reply({ content: "❌ Impossible d'envoyer l'annonce.", ephemeral: true });
     }
