@@ -188,11 +188,24 @@ export interface SendEmbedBody {
   thumbnailUrl?: string | null;
 }
 
+export type AnnounceBodyType =
+  (typeof AnnounceBodyType)[keyof typeof AnnounceBodyType];
+
+export const AnnounceBodyType = {
+  annonce: "annonce",
+  "mise-a-jour": "mise-a-jour",
+  evenement: "evenement",
+  maintenance: "maintenance",
+  urgent: "urgent",
+  information: "information",
+} as const;
+
 export interface AnnounceBody {
   channelId: string;
   title: string;
   message: string;
   pingEveryone: boolean;
+  type?: AnnounceBodyType;
 }
 
 export interface SayBody {

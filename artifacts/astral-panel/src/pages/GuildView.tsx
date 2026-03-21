@@ -654,7 +654,7 @@ function MessagingTab({ guildId }: { guildId: string }) {
   const { toast } = useToast();
 
   const [sayData,   setSayData]   = useState({ channelId: '', message: '' });
-  const [annData,   setAnnData]   = useState({ channelId: '', title: '', message: '', pingEveryone: false });
+  const [annData,   setAnnData]   = useState({ channelId: '', title: '', message: '', pingEveryone: false, type: 'annonce' as string });
   const [embedData, setEmbedData] = useState({ channelId: '', title: '', description: '', color: '#00F0FF' });
   const [dmData,    setDmData]    = useState({ userId: '', message: '' });
 
@@ -722,22 +722,53 @@ function MessagingTab({ guildId }: { guildId: string }) {
 
         {/* Annonce */}
         <CyberCard>
-          <h2 className="text-lg font-bold mb-5" style={{ color: '#ffd700' }}>Annonce globale</h2>
+          <h2 className="text-lg font-bold mb-4" style={{ color: '#ffd700' }}>📢 Annonce globale</h2>
+          {/* Type selector */}
+          <div className="mb-4">
+            <p className="text-[10px] font-display text-muted-foreground tracking-widest uppercase mb-2">Type d'annonce</p>
+            <div className="grid grid-cols-3 gap-1.5">
+              {([
+                { key: 'annonce',       label: 'ANNONCE',     icon: '📢', color: '#ffd700' },
+                { key: 'mise-a-jour',   label: 'MAJ',         icon: '🔄', color: '#00aaff' },
+                { key: 'evenement',     label: 'ÉVÉNEMENT',   icon: '🎉', color: '#ff6b9d' },
+                { key: 'maintenance',   label: 'MAINTENANCE', icon: '🔧', color: '#ffa500' },
+                { key: 'urgent',        label: 'URGENT',      icon: '🚨', color: '#ff3333' },
+                { key: 'information',   label: 'INFO',        icon: 'ℹ️', color: '#00f0ff' },
+              ] as const).map(t => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setAnnData({ ...annData, type: t.key })}
+                  className={`flex items-center gap-1.5 px-2.5 py-2 text-[10px] font-display tracking-wider uppercase cyber-clip-sm border transition-all duration-150 ${
+                    annData.type === t.key
+                      ? 'border-current text-current bg-current/15 shadow-[0_0_12px_currentColor/30]'
+                      : 'border-muted-foreground/20 text-muted-foreground/60 bg-transparent hover:border-muted-foreground/40'
+                  }`}
+                  style={annData.type === t.key ? { color: t.color, borderColor: t.color } : {}}
+                >
+                  <span>{t.icon}</span>
+                  <span>{t.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
           <form onSubmit={handleAnnounce} className="space-y-3">
             <ChannelSelect value={annData.channelId} onChange={e => setAnnData({ ...annData, channelId: e.target.value })} />
             <CyberInput placeholder="Titre de l'annonce" value={annData.title} onChange={e => setAnnData({ ...annData, title: e.target.value })} required />
             <textarea 
-              className="w-full h-24 bg-background border border-primary/30 px-4 py-3 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary rounded resize-none"
+              className="w-full h-24 bg-background border border-primary/30 px-4 py-3 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary cyber-clip resize-none"
               placeholder="Contenu de l'annonce…"
               value={annData.message}
               onChange={e => setAnnData({ ...annData, message: e.target.value })}
               required
             />
-            <label className="flex items-center gap-3 cursor-pointer">
+            <label className="flex items-center gap-3 cursor-pointer select-none">
               <input type="checkbox" className="w-4 h-4 accent-primary" checked={annData.pingEveryone} onChange={e => setAnnData({ ...annData, pingEveryone: e.target.checked })} />
               <span className="font-body text-sm">Mentionner @everyone</span>
             </label>
-            <CyberButton type="submit" isLoading={annPending} className="w-full" style={{ borderColor: '#ffd700', color: '#ffd700' }}>Diffuser l'annonce</CyberButton>
+            <CyberButton type="submit" isLoading={annPending} className="w-full" style={{ borderColor: '#ffd700', color: '#ffd700' }}>
+              Diffuser l'annonce
+            </CyberButton>
           </form>
         </CyberCard>
 
@@ -1127,24 +1158,45 @@ function RulesTab({ guildId }: { guildId: string }) {
 }
 
 /* ─────────────────── Journaux ─────────────────── */
-const LOG_COLORS: Record<string, string> = {
-  BAN: 'destructive',
-  KICK: 'destructive',
-  MASSBAN: 'destructive',
-  NUKE: 'destructive',
-  MUTE: 'outline',
-  UNMUTE: 'outline',
-  WARN: 'primary',
-  UNWARN: 'primary',
-  UNBAN: 'primary',
-  BREACH: 'destructive',
-  MAINTENANCE: 'outline',
-  CLEAR: 'outline',
-  DM: 'outline',
-  SAY: 'outline',
-  EMBED: 'outline',
-  ANNOUNCE: 'outline',
+const LOG_META: Record<string, { icon: string; variant: string; color: string }> = {
+  BAN:            { icon: '☠️', variant: 'destructive', color: 'border-red-500/60 bg-red-500/5' },
+  KICK:           { icon: '⚡', variant: 'destructive', color: 'border-orange-500/60 bg-orange-500/5' },
+  MASSBAN:        { icon: '☠️', variant: 'destructive', color: 'border-red-500/60 bg-red-500/5' },
+  NUKE:           { icon: '💥', variant: 'destructive', color: 'border-red-500/60 bg-red-500/5' },
+  MUTE:           { icon: '🔇', variant: 'warning',     color: 'border-amber-500/60 bg-amber-500/5' },
+  UNMUTE:         { icon: '🔊', variant: 'success',     color: 'border-emerald-500/40 bg-emerald-500/5' },
+  WARN:           { icon: '⚠️', variant: 'warning',     color: 'border-amber-500/60 bg-amber-500/5' },
+  UNBAN:          { icon: '🔓', variant: 'success',     color: 'border-emerald-500/40 bg-emerald-500/5' },
+  MEMBER_JOIN:    { icon: '📥', variant: 'success',     color: 'border-emerald-500/40 bg-emerald-500/5' },
+  MEMBER_LEAVE:   { icon: '📤', variant: 'outline',     color: 'border-slate-500/30 bg-slate-500/5' },
+  AUTOMOD_DELETE: { icon: '🤖', variant: 'warning',     color: 'border-amber-500/40 bg-amber-500/5' },
+  MESSAGE_DELETE: { icon: '🗑️', variant: 'destructive', color: 'border-red-400/40 bg-red-400/5' },
+  MESSAGE_EDIT:   { icon: '✏️', variant: 'warning',     color: 'border-amber-400/40 bg-amber-400/5' },
+  NICKNAME_CHANGE:{ icon: '🏷️', variant: 'info',        color: 'border-sky-400/40 bg-sky-400/5' },
+  ROLE_ADDED:     { icon: '🎖️', variant: 'success',     color: 'border-emerald-400/40 bg-emerald-400/5' },
+  ROLE_REMOVED:   { icon: '🎗️', variant: 'destructive', color: 'border-red-400/40 bg-red-400/5' },
+  ROLE_CREATE:    { icon: '🌟', variant: 'info',        color: 'border-sky-400/40 bg-sky-400/5' },
+  ROLE_DELETE:    { icon: '💔', variant: 'destructive', color: 'border-red-500/40 bg-red-500/5' },
+  CHANNEL_CREATE: { icon: '📡', variant: 'success',     color: 'border-emerald-400/40 bg-emerald-400/5' },
+  CHANNEL_DELETE: { icon: '🗑️', variant: 'destructive', color: 'border-red-400/40 bg-red-400/5' },
+  VOICE_JOIN:     { icon: '🎙️', variant: 'success',     color: 'border-teal-400/40 bg-teal-400/5' },
+  VOICE_LEAVE:    { icon: '🔕', variant: 'outline',     color: 'border-slate-400/30 bg-slate-400/5' },
+  VOICE_MOVE:     { icon: '🔀', variant: 'info',        color: 'border-sky-400/40 bg-sky-400/5' },
+  INVITE_CREATE:  { icon: '🔗', variant: 'purple',      color: 'border-purple-400/40 bg-purple-400/5' },
+  BREACH_ON:      { icon: '🚨', variant: 'destructive', color: 'border-red-500/60 bg-red-500/5' },
+  BREACH_OFF:     { icon: '✅', variant: 'success',     color: 'border-emerald-500/40 bg-emerald-500/5' },
+  MAINTENANCE_ON: { icon: '🔧', variant: 'warning',     color: 'border-amber-500/40 bg-amber-500/5' },
+  MAINTENANCE_OFF:{ icon: '✅', variant: 'success',     color: 'border-emerald-500/40 bg-emerald-500/5' },
+  ANNOUNCE:       { icon: '📢', variant: 'primary',     color: 'border-primary/40 bg-primary/5' },
+  DM:             { icon: '📨', variant: 'primary',     color: 'border-primary/30 bg-primary/5' },
+  RULES_SETUP:    { icon: '📋', variant: 'info',        color: 'border-sky-400/30 bg-sky-400/5' },
+  RULES_ACCEPTED: { icon: '✅', variant: 'success',     color: 'border-emerald-500/40 bg-emerald-500/5' },
+  GIVEAWAY_START: { icon: '🎉', variant: 'pink',        color: 'border-pink-400/40 bg-pink-400/5' },
+  GIVEAWAY_END:   { icon: '🏁', variant: 'outline',     color: 'border-slate-400/30 bg-slate-400/5' },
 };
+
+const getLogMeta = (action: string) =>
+  LOG_META[action] ?? { icon: '📌', variant: 'outline', color: 'border-primary/20 bg-background' };
 
 function LogsTab({ guildId }: { guildId: string }) {
   const { data: logs, isLoading } = useGetGuildLogs(guildId, { limit: 200 });
@@ -1153,8 +1205,7 @@ function LogsTab({ guildId }: { guildId: string }) {
 
   const actionTypes = useMemo(() => {
     if (!logs) return [];
-    const types = [...new Set(logs.map(l => l.action))].sort();
-    return types;
+    return [...new Set(logs.map(l => l.action))].sort();
   }, [logs]);
 
   const filtered = useMemo(() => {
@@ -1162,7 +1213,7 @@ function LogsTab({ guildId }: { guildId: string }) {
     return logs.filter(l => {
       const matchAction = !filter || l.action === filter;
       const q = search.toLowerCase();
-      const matchSearch = !q || 
+      const matchSearch = !q ||
         l.action.toLowerCase().includes(q) ||
         (l.targetName ?? '').toLowerCase().includes(q) ||
         (l.moderatorName ?? '').toLowerCase().includes(q) ||
@@ -1171,74 +1222,82 @@ function LogsTab({ guildId }: { guildId: string }) {
     });
   }, [logs, filter, search]);
 
-  if (isLoading) return <p className="text-primary animate-pulse font-display text-sm">Chargement des journaux...</p>;
+  if (isLoading) return (
+    <div className="flex items-center gap-3 p-8 text-primary">
+      <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <span className="font-display text-sm tracking-widest animate-pulse">Chargement des journaux...</span>
+    </div>
+  );
 
   return (
     <CyberCard>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <h2 className="text-lg font-bold text-primary flex items-center gap-2">
-          <ListOrdered className="w-5 h-5" /> Journal d'activité
-          <span className="text-xs font-normal text-muted-foreground ml-1">({filtered.length} entrées)</span>
+          <ListOrdered className="w-5 h-5" />
+          <span>Journal d'activité</span>
+          <CyberBadge variant="outline" className="ml-1 text-[9px]">{filtered.length} entrées</CyberBadge>
         </h2>
         <div className="flex gap-2 flex-wrap">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <input
+            <CyberInput
               type="text"
               placeholder="Rechercher…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-8 pr-3 py-1.5 bg-background border border-primary/30 rounded text-xs font-body text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary w-44"
+              className="pl-8 py-1.5 text-xs w-44"
             />
           </div>
           <div className="relative">
-            <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-            <select
+            <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none z-10" />
+            <CyberSelect
               value={filter}
               onChange={e => setFilter(e.target.value)}
-              className="pl-8 pr-3 py-1.5 bg-background border border-primary/30 rounded text-xs font-body text-foreground focus:outline-none focus:border-primary appearance-none"
+              className="pl-8 py-1.5 text-xs pr-6"
             >
               <option value="">Toutes les actions</option>
-              {actionTypes.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
+              {actionTypes.map(t => <option key={t} value={t}>{getLogMeta(t).icon} {t}</option>)}
+            </CyberSelect>
           </div>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left">
-          <thead className="text-xs text-muted-foreground font-display tracking-widest bg-background/50 border-y border-primary/20">
-            <tr>
-              <th className="px-4 py-3">Date / Heure</th>
-              <th className="px-4 py-3">Action</th>
-              <th className="px-4 py-3">Cible</th>
-              <th className="px-4 py-3">Modérateur</th>
-              <th className="px-4 py-3">Détails</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(log => (
-              <tr key={log.id} className="border-b border-primary/10 hover:bg-primary/5 transition-colors">
-                <td className="px-4 py-3 font-display text-xs text-muted-foreground whitespace-nowrap">
-                  {format(new Date(log.createdAt), 'dd/MM HH:mm:ss')}
-                </td>
-                <td className="px-4 py-3">
-                  <CyberBadge variant={(LOG_COLORS[log.action] as any) ?? 'outline'}>
-                    {log.action}
-                  </CyberBadge>
-                </td>
-                <td className="px-4 py-3 font-semibold text-foreground">{log.targetName || '—'}</td>
-                <td className="px-4 py-3 text-primary text-sm">{log.moderatorName || 'SYSTÈME'}</td>
-                <td className="px-4 py-3 text-muted-foreground text-sm max-w-xs truncate" title={log.details || ''}>{log.details || '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {filtered.length === 0 && (
-          <p className="p-6 text-muted-foreground italic text-sm text-center">
-            {logs?.length === 0 ? 'Aucun événement enregistré.' : 'Aucun résultat pour ces filtres.'}
-          </p>
-        )}
+      <div className="space-y-1.5 max-h-[600px] overflow-y-auto pr-1 scrollbar-none">
+        {filtered.length === 0 ? (
+          <div className="py-12 text-center text-muted-foreground/60 font-display text-xs tracking-widest">
+            {logs?.length === 0 ? '── AUCUN ÉVÉNEMENT ENREGISTRÉ ──' : '── AUCUN RÉSULTAT ──'}
+          </div>
+        ) : filtered.map((log, i) => {
+          const meta = getLogMeta(log.action);
+          return (
+            <motion.div
+              key={log.id}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: Math.min(i * 0.015, 0.3), duration: 0.2 }}
+              className={`flex items-start gap-3 px-4 py-3 border-l-2 border border-r border-t border-b ${meta.color} hover:brightness-125 transition-all duration-200 cursor-default`}
+            >
+              <span className="text-base flex-shrink-0 leading-none mt-0.5">{meta.icon}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                  <CyberBadge variant={meta.variant as any} className="text-[9px]">{log.action}</CyberBadge>
+                  {log.targetName && (
+                    <span className="text-xs font-semibold text-foreground">{log.targetName}</span>
+                  )}
+                  {log.moderatorName && (
+                    <span className="text-[10px] text-primary/70 font-display">par {log.moderatorName}</span>
+                  )}
+                </div>
+                {log.details && (
+                  <p className="text-xs text-muted-foreground/80 font-body truncate mt-0.5" title={log.details}>{log.details}</p>
+                )}
+              </div>
+              <span className="text-[10px] font-display text-muted-foreground/50 whitespace-nowrap flex-shrink-0 tabular-nums">
+                {format(new Date(log.createdAt), 'dd/MM HH:mm:ss')}
+              </span>
+            </motion.div>
+          );
+        })}
       </div>
     </CyberCard>
   );

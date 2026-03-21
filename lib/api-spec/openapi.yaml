@@ -1308,6 +1308,9 @@ components:
           type: string
         pingEveryone:
           type: boolean
+        type:
+          type: string
+          enum: [annonce, mise-a-jour, evenement, maintenance, urgent, information]
       required: [channelId, title, message, pingEveryone]
 
     SayBody:

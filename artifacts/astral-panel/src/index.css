@@ -31,39 +31,35 @@
 }
 
 :root {
-  /* Deep Space Dark Blue & Electric Cyan */
   --background: 222 47% 4%;
   --foreground: 190 80% 90%;
   
-  --card: 222 47% 7%;
+  --card: 222 47% 6%;
   --card-foreground: 190 80% 90%;
   
-  --popover: 222 47% 7%;
+  --popover: 222 47% 6%;
   --popover-foreground: 190 80% 90%;
   
-  /* Electric Cyan */
   --primary: 184 100% 50%;
   --primary-foreground: 222 47% 4%;
   
-  /* Darker Blue-Cyan for secondary */
   --secondary: 210 60% 15%;
   --secondary-foreground: 190 80% 90%;
   
   --muted: 215 30% 12%;
-  --muted-foreground: 215 20% 65%;
+  --muted-foreground: 215 20% 55%;
   
-  /* Magenta/Purple Accent */
   --accent: 280 100% 60%;
   --accent-foreground: 190 80% 90%;
   
   --destructive: 350 90% 55%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 184 100% 20%;
-  --input: 184 100% 15%;
+  --border: 184 100% 18%;
+  --input: 184 100% 12%;
   --ring: 184 100% 50%;
 
-  --radius: 0; /* Sharp corners for cyberpunk look */
+  --radius: 0;
 }
 
 @layer base {
@@ -73,7 +69,8 @@
   body {
     @apply font-body antialiased bg-background text-foreground overflow-x-hidden selection:bg-primary/30 selection:text-primary;
     background-image: 
-      radial-gradient(circle at 50% 0%, hsl(var(--primary) / 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 20% 0%, hsl(var(--primary) / 0.08) 0%, transparent 45%),
+      radial-gradient(circle at 80% 100%, hsl(var(--accent) / 0.05) 0%, transparent 45%),
       linear-gradient(to bottom, transparent, hsl(var(--background)));
     background-color: hsl(var(--background));
     background-attachment: fixed;
@@ -89,57 +86,141 @@
     clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
   }
   
+  .cyber-clip-sm {
+    clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  }
+  
   .cyber-clip-reverse {
     clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
   }
 
   .text-glow {
-    text-shadow: 0 0 10px hsl(var(--primary) / 0.5);
+    text-shadow: 0 0 10px hsl(var(--primary) / 0.6), 0 0 20px hsl(var(--primary) / 0.3);
+  }
+  
+  .text-glow-sm {
+    text-shadow: 0 0 6px hsl(var(--primary) / 0.4);
   }
 
   .box-glow {
-    box-shadow: 0 0 15px hsl(var(--primary) / 0.2), inset 0 0 10px hsl(var(--primary) / 0.1);
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.15), 0 0 40px hsl(var(--primary) / 0.05), inset 0 0 15px hsl(var(--primary) / 0.08);
+  }
+  
+  .box-glow-strong {
+    box-shadow: 0 0 30px hsl(var(--primary) / 0.3), 0 0 60px hsl(var(--primary) / 0.1), inset 0 0 20px hsl(var(--primary) / 0.1);
   }
   
   .box-glow-destructive {
-    box-shadow: 0 0 15px hsl(var(--destructive) / 0.3), inset 0 0 10px hsl(var(--destructive) / 0.2);
+    box-shadow: 0 0 20px hsl(var(--destructive) / 0.3), 0 0 40px hsl(var(--destructive) / 0.1), inset 0 0 15px hsl(var(--destructive) / 0.15);
+  }
+  
+  .box-glow-accent {
+    box-shadow: 0 0 20px hsl(var(--accent) / 0.2), inset 0 0 10px hsl(var(--accent) / 0.1);
   }
 
-  /* Scanline effect overlay */
   .scanlines::before {
     content: " ";
     display: block;
     position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    background: linear-gradient(
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: repeating-linear-gradient(
       to bottom,
-      rgba(255,255,255,0),
-      rgba(255,255,255,0) 50%,
-      rgba(0,0,0,0.2) 50%,
-      rgba(0,0,0,0.2)
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
     );
-    background-size: 100% 4px;
     z-index: 50;
     pointer-events: none;
-    opacity: 0.3;
+    opacity: 0.4;
+  }
+  
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* ─── Animations ─────────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(200%); }
 }
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 10px hsl(var(--primary) / 0.2); }
+  50%       { box-shadow: 0 0 25px hsl(var(--primary) / 0.5), 0 0 50px hsl(var(--primary) / 0.2); }
+}
+
+@keyframes pulse-glow-destructive {
+  0%, 100% { box-shadow: 0 0 10px hsl(var(--destructive) / 0.2); }
+  50%       { box-shadow: 0 0 25px hsl(var(--destructive) / 0.5); }
+}
+
+@keyframes scan-vertical {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translateY(600%); opacity: 0; }
+}
+
+@keyframes flicker {
+  0%, 95%, 100% { opacity: 1; }
+  96%            { opacity: 0.7; }
+  97%            { opacity: 1; }
+  98%            { opacity: 0.85; }
+}
+
+@keyframes glitch-x {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-2px); }
+  40%       { transform: translateX(2px); }
+  60%       { transform: translateX(-1px); }
+  80%       { transform: translateX(1px); }
+}
+
+@keyframes data-stream {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes border-pulse {
+  0%, 100% { border-color: hsl(var(--primary) / 0.3); }
+  50%       { border-color: hsl(var(--primary) / 0.8); }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+.animate-pulse-glow-destructive { animation: pulse-glow-destructive 2s ease-in-out infinite; }
+.animate-scan { animation: scan-vertical 3s linear infinite; }
+.animate-flicker { animation: flicker 4s ease-in-out infinite; }
+.animate-glitch { animation: glitch-x 0.3s ease-in-out; }
+.animate-fade-in-up { animation: fade-in-up 0.3s ease-out forwards; }
+.animate-slide-in-right { animation: slide-in-right 0.25s ease-out forwards; }
+
+/* ─── Custom Scrollbar ───────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track {
   background: hsl(var(--background));
   border-left: 1px solid hsl(var(--border));
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary) / 0.3);
+  background: hsl(var(--primary) / 0.25);
+  border-radius: 0;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.8);
+  background: hsl(var(--primary) / 0.6);
 }

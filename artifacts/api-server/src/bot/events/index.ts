@@ -1,4 +1,8 @@
-import { Client, Events, ChatInputCommandInteraction, ButtonInteraction, ModalSubmitInteraction, TextChannel } from "discord.js";
+import {
+  Client, Events, GuildMember, PartialGuildMember,
+  ChatInputCommandInteraction, ButtonInteraction, ModalSubmitInteraction,
+  TextChannel, VoiceChannel, PartialMessage, Message, Role, GuildChannel,
+} from "discord.js";
 import { handleSurveyButton, handleSurveyModal } from "../commands/survey.js";
 import { handleRulesButton } from "../commands/rules.js";
 import { db } from "@workspace/db";
@@ -14,6 +18,8 @@ function applyPlaceholders(template: string, userId: string, username: string, s
 }
 
 export function registerEvents(client: Client): void {
+
+  // ─── Interactions ────────────────────────────────────────────────────────────
   client.on(Events.InteractionCreate, async (interaction) => {
     try {
       if (interaction.isChatInputCommand()) {
@@ -40,6 +46,7 @@ export function registerEvents(client: Client): void {
     }
   });
 
+  // ─── Automod + message create ────────────────────────────────────────────────
   client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.guildId) return;
 
@@ -61,7 +68,7 @@ export function registerEvents(client: Client): void {
             action: "AUTOMOD_DELETE",
             targetId: message.author.id,
             targetName: message.author.username,
-            details: `Mot banni: "${word}"`,
+            details: `Mot banni: "${word}" dans #${(message.channel as TextChannel).name ?? message.channelId}`,
           });
           return;
         }
@@ -69,13 +76,47 @@ export function registerEvents(client: Client): void {
     } catch {}
   });
 
+  // ─── Message supprimé ────────────────────────────────────────────────────────
+  client.on(Events.MessageDelete, async (message: Message | PartialMessage) => {
+    if (!message.guildId || message.author?.bot) return;
+    try {
+      const channelName = (message.channel as TextChannel).name ?? message.channelId;
+      await addLog({
+        guildId: message.guildId,
+        action: "MESSAGE_DELETE",
+        targetId: message.author?.id,
+        targetName: message.author?.username,
+        details: `#${channelName} — "${(message.content ?? "").substring(0, 120)}"`,
+      });
+    } catch {}
+  });
+
+  // ─── Message modifié ─────────────────────────────────────────────────────────
+  client.on(Events.MessageUpdate, async (oldMsg: Message | PartialMessage, newMsg: Message | PartialMessage) => {
+    if (!newMsg.guildId || newMsg.author?.bot) return;
+    if (oldMsg.content === newMsg.content) return;
+    try {
+      const channelName = (newMsg.channel as TextChannel).name ?? newMsg.channelId;
+      await addLog({
+        guildId: newMsg.guildId,
+        action: "MESSAGE_EDIT",
+        targetId: newMsg.author?.id,
+        targetName: newMsg.author?.username,
+        details: `#${channelName} | Avant: "${(oldMsg.content ?? "").substring(0, 80)}" → Après: "${(newMsg.content ?? "").substring(0, 80)}"`,
+      });
+    } catch {}
+  });
+
+  // ─── Membre rejoint ──────────────────────────────────────────────────────────
   client.on(Events.GuildMemberAdd, async (member) => {
     try {
+      const accountAge = Math.floor((Date.now() - member.user.createdAt.getTime()) / (1000 * 60 * 60 * 24));
       await addLog({
         guildId: member.guild.id,
         action: "MEMBER_JOIN",
         targetId: member.id,
         targetName: member.user.username,
+        details: `Compte créé il y a ${accountAge} jour(s)`,
       });
 
       const config = await db.select().from(guildConfigsTable)
@@ -92,13 +133,19 @@ export function registerEvents(client: Client): void {
     } catch {}
   });
 
+  // ─── Membre parti ────────────────────────────────────────────────────────────
   client.on(Events.GuildMemberRemove, async (member) => {
     try {
+      const roles = member.roles.cache
+        .filter(r => r.id !== member.guild.id)
+        .map(r => r.name)
+        .join(", ");
       await addLog({
         guildId: member.guild.id,
         action: "MEMBER_LEAVE",
         targetId: member.id,
         targetName: member.user.username,
+        details: roles ? `Rôles: ${roles}` : undefined,
       });
 
       const config = await db.select().from(guildConfigsTable)
@@ -112,6 +159,172 @@ export function registerEvents(client: Client): void {
           await channel.send(applyPlaceholders(msg, member.id, member.user.username, member.guild.name));
         }
       }
+    } catch {}
+  });
+
+  // ─── Mise à jour d'un membre (rôles, pseudo) ────────────────────────────────
+  client.on(Events.GuildMemberUpdate, async (oldMember: GuildMember | PartialGuildMember, newMember: GuildMember) => {
+    try {
+      const guildId = newMember.guild.id;
+
+      // Nickname changed
+      if (oldMember.nickname !== newMember.nickname) {
+        await addLog({
+          guildId,
+          action: "NICKNAME_CHANGE",
+          targetId: newMember.id,
+          targetName: newMember.user.username,
+          details: `"${oldMember.nickname ?? oldMember.user?.username}" → "${newMember.nickname ?? newMember.user.username}"`,
+        });
+      }
+
+      // Roles added
+      const addedRoles = newMember.roles.cache.filter(r => !oldMember.roles.cache.has(r.id) && r.id !== guildId);
+      for (const role of addedRoles.values()) {
+        await addLog({
+          guildId,
+          action: "ROLE_ADDED",
+          targetId: newMember.id,
+          targetName: newMember.user.username,
+          details: `Rôle ajouté: ${role.name}`,
+        });
+      }
+
+      // Roles removed
+      const removedRoles = oldMember.roles.cache?.filter(r => !newMember.roles.cache.has(r.id) && r.id !== guildId);
+      if (removedRoles) {
+        for (const role of removedRoles.values()) {
+          await addLog({
+            guildId,
+            action: "ROLE_REMOVED",
+            targetId: newMember.id,
+            targetName: newMember.user.username,
+            details: `Rôle retiré: ${role.name}`,
+          });
+        }
+      }
+    } catch {}
+  });
+
+  // ─── Ban Discord (hors bot) ──────────────────────────────────────────────────
+  client.on(Events.GuildBanAdd, async (ban) => {
+    try {
+      await addLog({
+        guildId: ban.guild.id,
+        action: "BAN",
+        targetId: ban.user.id,
+        targetName: ban.user.username,
+        details: ban.reason ? `Raison: ${ban.reason}` : "Banni du serveur",
+      });
+    } catch {}
+  });
+
+  // ─── Déban Discord (hors bot) ────────────────────────────────────────────────
+  client.on(Events.GuildBanRemove, async (ban) => {
+    try {
+      await addLog({
+        guildId: ban.guild.id,
+        action: "UNBAN",
+        targetId: ban.user.id,
+        targetName: ban.user.username,
+        details: "Banni levé",
+      });
+    } catch {}
+  });
+
+  // ─── Rôle créé ───────────────────────────────────────────────────────────────
+  client.on(Events.GuildRoleCreate, async (role: Role) => {
+    try {
+      await addLog({
+        guildId: role.guild.id,
+        action: "ROLE_CREATE",
+        details: `Rôle créé: ${role.name} (couleur: ${role.hexColor})`,
+      });
+    } catch {}
+  });
+
+  // ─── Rôle supprimé ───────────────────────────────────────────────────────────
+  client.on(Events.GuildRoleDelete, async (role: Role) => {
+    try {
+      await addLog({
+        guildId: role.guild.id,
+        action: "ROLE_DELETE",
+        details: `Rôle supprimé: ${role.name}`,
+      });
+    } catch {}
+  });
+
+  // ─── Salon créé ──────────────────────────────────────────────────────────────
+  client.on(Events.ChannelCreate, async (channel) => {
+    if (!('guildId' in channel) || !channel.guildId) return;
+    try {
+      await addLog({
+        guildId: channel.guildId,
+        action: "CHANNEL_CREATE",
+        details: `Salon créé: #${(channel as GuildChannel).name}`,
+      });
+    } catch {}
+  });
+
+  // ─── Salon supprimé ──────────────────────────────────────────────────────────
+  client.on(Events.ChannelDelete, async (channel) => {
+    if (!('guildId' in channel) || !channel.guildId) return;
+    try {
+      await addLog({
+        guildId: channel.guildId,
+        action: "CHANNEL_DELETE",
+        details: `Salon supprimé: #${(channel as GuildChannel).name}`,
+      });
+    } catch {}
+  });
+
+  // ─── Vocal join/leave/move ───────────────────────────────────────────────────
+  client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
+    if (!newState.guild) return;
+    const guildId = newState.guild.id;
+    const member = newState.member;
+    if (!member || member.user.bot) return;
+
+    try {
+      if (!oldState.channelId && newState.channelId) {
+        await addLog({
+          guildId,
+          action: "VOICE_JOIN",
+          targetId: member.id,
+          targetName: member.user.username,
+          details: `A rejoint: #${newState.channel?.name ?? newState.channelId}`,
+        });
+      } else if (oldState.channelId && !newState.channelId) {
+        await addLog({
+          guildId,
+          action: "VOICE_LEAVE",
+          targetId: member.id,
+          targetName: member.user.username,
+          details: `A quitté: #${oldState.channel?.name ?? oldState.channelId}`,
+        });
+      } else if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
+        await addLog({
+          guildId,
+          action: "VOICE_MOVE",
+          targetId: member.id,
+          targetName: member.user.username,
+          details: `#${oldState.channel?.name} → #${newState.channel?.name}`,
+        });
+      }
+    } catch {}
+  });
+
+  // ─── Invitation créée ────────────────────────────────────────────────────────
+  client.on(Events.InviteCreate, async (invite) => {
+    if (!invite.guild) return;
+    try {
+      await addLog({
+        guildId: invite.guild.id,
+        action: "INVITE_CREATE",
+        targetId: invite.inviter?.id,
+        targetName: invite.inviter?.username,
+        details: `Code: ${invite.code} | Utilisations max: ${invite.maxUses ?? "∞"} | Expire: ${invite.maxAge ? `${invite.maxAge / 3600}h` : "jamais"}`,
+      });
     } catch {}
   });
 }

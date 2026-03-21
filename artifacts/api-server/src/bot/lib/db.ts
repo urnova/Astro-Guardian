@@ -55,6 +55,19 @@ const ACTION_COLORS: Record<string, number> = {
   SUBMIT_CREATE: 0x00ff88,
   GIVEAWAY_START: 0xff6b9d,
   GIVEAWAY_END: 0xaaaaaa,
+  MESSAGE_DELETE: 0xff4444,
+  MESSAGE_EDIT: 0xffaa00,
+  NICKNAME_CHANGE: 0x00ccff,
+  ROLE_ADDED: 0x00ff88,
+  ROLE_REMOVED: 0xff6666,
+  ROLE_CREATE: 0x00ddff,
+  ROLE_DELETE: 0xff3333,
+  CHANNEL_CREATE: 0x00ff88,
+  CHANNEL_DELETE: 0xff3333,
+  VOICE_JOIN: 0x00ffcc,
+  VOICE_LEAVE: 0x888888,
+  VOICE_MOVE: 0x00aaff,
+  INVITE_CREATE: 0xaa88ff,
 };
 
 const ACTION_ICONS: Record<string, string> = {
@@ -84,6 +97,19 @@ const ACTION_ICONS: Record<string, string> = {
   SUBMIT_CREATE: "📬",
   GIVEAWAY_START: "🎉",
   GIVEAWAY_END: "🏁",
+  MESSAGE_DELETE: "🗑️",
+  MESSAGE_EDIT: "✏️",
+  NICKNAME_CHANGE: "🏷️",
+  ROLE_ADDED: "🎖️",
+  ROLE_REMOVED: "🎗️",
+  ROLE_CREATE: "🌟",
+  ROLE_DELETE: "💔",
+  CHANNEL_CREATE: "📡",
+  CHANNEL_DELETE: "🗑️",
+  VOICE_JOIN: "🎙️",
+  VOICE_LEAVE: "🔕",
+  VOICE_MOVE: "🔀",
+  INVITE_CREATE: "🔗",
 };
 
 export async function addLog(data: {

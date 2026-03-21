@@ -424,9 +424,18 @@ router.post("/:guildId/actions/embed", async (req, res) => {
   }
 });
 
+const ANNOUNCE_TYPES: Record<string, { label: string; icon: string; color: number; separator: string }> = {
+  annonce:       { label: "ANNONCE OFFICIELLE",    icon: "📢", color: 0xffd700, separator: "🔔" },
+  "mise-a-jour": { label: "MISE À JOUR",           icon: "🔄", color: 0x00aaff, separator: "🔵" },
+  evenement:     { label: "ÉVÉNEMENT",             icon: "🎉", color: 0xff6b9d, separator: "🎊" },
+  maintenance:   { label: "MAINTENANCE PLANIFIÉE", icon: "🔧", color: 0xffa500, separator: "⚙️" },
+  urgent:        { label: "ALERTE URGENTE",        icon: "🚨", color: 0xff0000, separator: "🔴" },
+  information:   { label: "INFORMATION",           icon: "ℹ️", color: 0x00f0ff, separator: "🔷" },
+};
+
 router.post("/:guildId/actions/announce", async (req, res) => {
   try {
-    const { channelId, title, message, pingEveryone } = req.body;
+    const { channelId, title, message, pingEveryone, type: typeKey } = req.body;
     const client = getBotClient();
 
     if (!client) return res.status(503).json({ error: "Bot non connecté" });
@@ -436,18 +445,22 @@ router.post("/:guildId/actions/announce", async (req, res) => {
 
     if (!channel) return res.status(404).json({ error: "Canal introuvable" });
 
+    const typeInfo = ANNOUNCE_TYPES[typeKey ?? "annonce"] ?? ANNOUNCE_TYPES["annonce"];
+    const sep = typeInfo.separator.repeat(8);
+
     const embed = new EmbedBuilder()
-      .setTitle(`📢 ${title}`)
+      .setTitle(`${typeInfo.icon} ${title}`)
       .setDescription(message)
-      .setColor(0xffd700)
-      .setFooter({ text: `Annonce officielle • ${guild?.name}` })
+      .setColor(typeInfo.color)
+      .setAuthor({ name: typeInfo.label, iconURL: guild?.iconURL() ?? undefined })
+      .setFooter({ text: `${typeInfo.label} • ${guild?.name}` })
       .setTimestamp();
 
-    await channel.send("🔔".repeat(10));
+    await channel.send(sep);
     await channel.send({ content: pingEveryone ? "@everyone" : "", embeds: [embed] });
-    await channel.send("🔔".repeat(10));
+    await channel.send(sep);
 
-    res.json({ success: true, message: "Annonce envoyée" });
+    res.json({ success: true, message: `Annonce [${typeInfo.label}] envoyée` });
   } catch {
     res.status(500).json({ error: "Erreur serveur" });
   }

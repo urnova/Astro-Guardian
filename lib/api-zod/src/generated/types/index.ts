@@ -9,6 +9,7 @@
 export * from "./addBannedWordBody";
 export * from "./addWarnBody";
 export * from "./announceBody";
+export * from "./announceBodyType";
 export * from "./banBody";
 export * from "./bannedWord";
 export * from "./botStatus";

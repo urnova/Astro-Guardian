@@ -576,6 +576,16 @@ export const SendAnnouncementBody = zod.object({
   title: zod.string(),
   message: zod.string(),
   pingEveryone: zod.boolean(),
+  type: zod
+    .enum([
+      "annonce",
+      "mise-a-jour",
+      "evenement",
+      "maintenance",
+      "urgent",
+      "information",
+    ])
+    .optional(),
 });
 
 export const SendAnnouncementResponse = zod.object({

@@ -5,10 +5,12 @@
  * ASTRAL-BOT Panel API
  * OpenAPI spec version: 0.1.0
  */
+import type { AnnounceBodyType } from "./announceBodyType";
 
 export interface AnnounceBody {
   channelId: string;
   title: string;
   message: string;
   pingEveryone: boolean;
+  type?: AnnounceBodyType;
 }

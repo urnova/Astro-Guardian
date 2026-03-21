@@ -2,7 +2,7 @@
 
 ## Overview
 
-Système complet de bot Discord + panel de contrôle web pour Astral Technologie. Style science-fiction cyberpunk.
+Système complet de bot Discord + panel de contrôle web pour Astral Technologie. Style science-fiction cyberpunk (Orbitron + Rajdhani, cyan électrique #00F0FF, magenta accent, fond deep space).
 
 ## Stack
 
