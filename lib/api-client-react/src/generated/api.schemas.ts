@@ -166,6 +166,8 @@ export interface CreateSurveyBody {
   channelId: string;
   responseChannelId?: string | null;
   questions: string[];
+  /** questionnaire | fil-reponse | soumission */
+  type?: string | null;
 }
 
 export interface MaintenanceBody {

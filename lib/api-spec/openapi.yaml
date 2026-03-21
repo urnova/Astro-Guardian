@@ -1252,6 +1252,10 @@ components:
           type: array
           items:
             type: string
+        type:
+          type: string
+          nullable: true
+          description: "questionnaire | fil-reponse | soumission"
       required: [title, channelId, questions]
 
     MaintenanceBody:

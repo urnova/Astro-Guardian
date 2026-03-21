@@ -44,6 +44,7 @@ export async function startBot(): Promise<void> {
       GatewayIntentBits.GuildVoiceStates,
       GatewayIntentBits.GuildModeration,
       GatewayIntentBits.GuildInvites,
+      GatewayIntentBits.GuildMessageTyping,
     ],
     partials: [Partials.Channel, Partials.Message, Partials.Reaction, Partials.GuildMember],
   });

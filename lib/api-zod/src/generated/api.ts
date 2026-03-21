@@ -325,6 +325,10 @@ export const CreateSurveyBody = zod.object({
   channelId: zod.string(),
   responseChannelId: zod.string().nullish(),
   questions: zod.array(zod.string()),
+  type: zod
+    .string()
+    .nullish()
+    .describe("questionnaire | fil-reponse | soumission"),
 });
 
 /**

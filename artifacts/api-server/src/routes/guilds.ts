@@ -282,13 +282,49 @@ router.get("/:guildId/surveys", async (req, res) => {
 
 router.post("/:guildId/surveys", async (req, res) => {
   try {
-    const { title, description, channelId, responseChannelId, questions } = req.body;
+    const { title, description, channelId, responseChannelId, questions, type: surveyType } = req.body;
+    const resolvedType = surveyType ?? "questionnaire";
+
     const [inserted] = await db
       .insert(surveysTable)
-      .values({ guildId: req.params.guildId, title, description, channelId, responseChannelId, questions, active: true })
+      .values({ guildId: req.params.guildId, title, description, channelId, responseChannelId, questions, type: resolvedType, active: true })
       .returning();
+
+    // Post survey embed + button to Discord channel
+    try {
+      const client = getBotClient();
+      const guild = client?.guilds.cache.get(req.params.guildId);
+      const ch = guild?.channels.cache.get(channelId) as import("discord.js").TextChannel | undefined;
+      if (ch) {
+        const { EmbedBuilder: EB, ButtonBuilder: BB, ButtonStyle: BS, ActionRowBuilder: AR } = await import("discord.js");
+        const isPhoto = resolvedType === "fil-reponse";
+        const embed = new EB()
+          .setTitle(`${isPhoto ? "📸" : "📝"} ${title}`)
+          .setDescription(
+            (description ? description + "\n\n" : "") +
+            (isPhoto
+              ? "Cliquez sur le bouton ci-dessous pour ouvrir votre fil de réponse privé.\nVous pourrez envoyer **texte et photos** pour chaque question."
+              : "Répondez aux questions en cliquant sur le bouton ci-dessous.")
+          )
+          .setColor(isPhoto ? 0xff6b9d : 0x5865f2)
+          .addFields(...(questions as string[]).map((q: string, i: number) => ({ name: `Question ${i + 1}`, value: q, inline: false })))
+          .setFooter({ text: `${isPhoto ? "Questionnaire photo" : "Questionnaire"} #${inserted.id} • ASTRAL TECHNOLOGIE` })
+          .setTimestamp();
+
+        const button = new BB()
+          .setCustomId(`survey_respond_${inserted.id}`)
+          .setLabel(isPhoto ? "📸 Ouvrir mon fil de réponse" : "📝 Répondre au questionnaire")
+          .setStyle(isPhoto ? BS.Secondary : BS.Primary);
+
+        await ch.send({ embeds: [embed], components: [new AR<import("discord.js").ButtonBuilder>().addComponents(button)] });
+      }
+    } catch (botErr) {
+      console.error("[survey panel] Discord post error:", botErr);
+    }
+
     res.status(201).json({ ...inserted, responseCount: 0 });
-  } catch {
+  } catch (err) {
+    console.error("[survey create]", err);
     res.status(500).json({ error: "Erreur serveur" });
   }
 });

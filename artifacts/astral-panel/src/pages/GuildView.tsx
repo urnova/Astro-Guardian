@@ -944,8 +944,12 @@ function SurveysTab({ guildId }: { guildId: string }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Form state
+  const [surveyMode, setSurveyMode] = useState<'questionnaire' | 'fil-reponse'>('questionnaire');
   const [channelId, setChannelId] = useState('');
+  const [responseChannelId, setResponseChannelId] = useState('');
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [questions, setQuestions] = useState<SurveyQuestion[]>([]);
   const [newQ, setNewQ] = useState({ text: '', type: 'text' as 'text' | 'image' });
 
@@ -954,21 +958,40 @@ function SurveysTab({ guildId }: { guildId: string }) {
     setQuestions(prev => [...prev, { ...newQ }]);
     setNewQ({ text: '', type: 'text' });
   };
-
   const removeQuestion = (i: number) => setQuestions(prev => prev.filter((_, idx) => idx !== i));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const validQs = questions.filter(q => q.text.trim());
     if (!channelId || !title || validQs.length === 0) return;
-    createSurvey({ guildId, data: { channelId, title, questions: validQs.map(q => q.text) } }, {
+    if (surveyMode === 'fil-reponse' && !responseChannelId) {
+      toast({ title: 'Salon de réception requis', description: 'Choisissez un salon pour recevoir les réponses photo.', variant: 'destructive' });
+      return;
+    }
+    if (surveyMode === 'questionnaire' && validQs.length > 5) {
+      toast({ title: 'Maximum 5 questions', description: 'Le questionnaire texte est limité à 5 questions (modal Discord). Utilisez le type Photo+Texte pour plus.', variant: 'destructive' });
+      return;
+    }
+    createSurvey({
+      guildId,
+      data: {
+        channelId,
+        responseChannelId: responseChannelId || undefined,
+        title,
+        description: description || undefined,
+        questions: validQs.map(q => q.text),
+        type: surveyMode,
+      }
+    }, {
       onSuccess: () => {
-        toast({ title: 'Questionnaire lancé !' });
+        toast({ title: surveyMode === 'fil-reponse' ? '📸 Questionnaire photo lancé !' : '📝 Questionnaire lancé !' });
         queryClient.invalidateQueries({ queryKey: [`/api/guilds/${guildId}/surveys`] });
-        setTitle(''); setChannelId(''); setQuestions([{ text: '', type: 'text' }]);
+        setTitle(''); setChannelId(''); setResponseChannelId(''); setDescription(''); setQuestions([]);
       }
     });
   };
+
+  const isPhotoMode = surveyMode === 'fil-reponse';
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -977,23 +1000,74 @@ function SurveysTab({ guildId }: { guildId: string }) {
           <CheckSquare className="w-5 h-5" /> Nouveau questionnaire
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <CyberSelect value={channelId} onChange={e => setChannelId(e.target.value)} required>
-            <option value="">— Choisir un salon —</option>
-            {channels?.map(c => <option key={c.id} value={c.id}>#{c.name}</option>)}
-          </CyberSelect>
+
+          {/* Type selector */}
+          <div>
+            <p className="text-[9px] font-display text-muted-foreground tracking-widest uppercase mb-2">Type de questionnaire</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setSurveyMode('questionnaire')}
+                className={`flex flex-col items-center gap-1.5 px-3 py-3 text-[10px] font-display tracking-wider border cyber-clip-sm transition-all ${!isPhotoMode ? 'text-sky-400 border-sky-400/60 bg-sky-400/10' : 'text-muted-foreground border-muted-foreground/20 hover:border-muted-foreground/40'}`}
+              >
+                <Type className="w-4 h-4" />
+                <span>Texte seul</span>
+                <span className="text-[8px] opacity-60">modal Discord</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSurveyMode('fil-reponse')}
+                className={`flex flex-col items-center gap-1.5 px-3 py-3 text-[10px] font-display tracking-wider border cyber-clip-sm transition-all ${isPhotoMode ? 'text-pink-400 border-pink-400/60 bg-pink-400/10' : 'text-muted-foreground border-muted-foreground/20 hover:border-muted-foreground/40'}`}
+              >
+                <ImageIcon className="w-4 h-4" />
+                <span>Photo + Texte</span>
+                <span className="text-[8px] opacity-60">fil de réponse</span>
+              </button>
+            </div>
+            {isPhotoMode && (
+              <div className="mt-2 p-2 bg-pink-500/10 border border-pink-500/30 text-[10px] font-body text-pink-300 leading-relaxed">
+                Les membres cliqueront un bouton → un fil privé s'ouvre → ils répondent question par question avec texte et/ou photos → leurs réponses vous sont envoyées.
+              </div>
+            )}
+            {!isPhotoMode && (
+              <div className="mt-2 p-2 bg-sky-500/10 border border-sky-500/30 text-[10px] font-body text-sky-300 leading-relaxed">
+                Un formulaire Discord s'ouvre (max 5 questions, texte uniquement). Réponses anonymes envoyées dans le salon choisi.
+              </div>
+            )}
+          </div>
+
+          {/* Salon de publication */}
+          <div>
+            <p className="text-[9px] font-display text-muted-foreground tracking-widest uppercase mb-1.5">Salon de publication</p>
+            <CyberSelect value={channelId} onChange={e => setChannelId(e.target.value)} required>
+              <option value="">— Choisir un salon —</option>
+              {channels?.map(c => <option key={c.id} value={c.id}>#{c.name}</option>)}
+            </CyberSelect>
+          </div>
+
+          {/* Salon de réception (always visible for photo, optional for text) */}
+          <div>
+            <p className="text-[9px] font-display text-muted-foreground tracking-widest uppercase mb-1.5">
+              Salon de réception des réponses {isPhotoMode ? <span className="text-pink-400">*</span> : <span className="opacity-50">(optionnel)</span>}
+            </p>
+            <CyberSelect value={responseChannelId} onChange={e => setResponseChannelId(e.target.value)} required={isPhotoMode}>
+              <option value="">{isPhotoMode ? '— Requis pour ce type —' : '— Optionnel —'}</option>
+              {channels?.map(c => <option key={c.id} value={c.id}>#{c.name}</option>)}
+            </CyberSelect>
+          </div>
+
           <CyberInput placeholder="Titre du questionnaire" value={title} onChange={e => setTitle(e.target.value)} required />
+          <CyberInput placeholder="Description (optionnel)" value={description} onChange={e => setDescription(e.target.value)} />
 
           {/* Questions builder */}
           <div>
             <p className="text-[10px] font-display text-muted-foreground tracking-widest uppercase mb-2">
-              Questions ({questions.filter(q => q.text.trim()).length})
+              Questions ({questions.filter(q => q.text.trim()).length}{!isPhotoMode ? '/5' : ''})
             </p>
             <div className="space-y-2 mb-3">
               {questions.map((q, i) => (
                 <div key={i} className="flex items-center gap-2 bg-background/60 border border-primary/20 px-3 py-2 cyber-clip-sm">
-                  <span className={`flex-shrink-0 text-xs ${q.type === 'image' ? 'text-pink-400' : 'text-sky-400'}`}>
-                    {q.type === 'image' ? <ImageIcon className="w-3.5 h-3.5" /> : <Type className="w-3.5 h-3.5" />}
-                  </span>
+                  <span className="flex-shrink-0 text-xs text-primary/60 font-display text-[9px]">{String(i + 1).padStart(2, '0')}.</span>
                   <span className="flex-1 text-xs font-body text-foreground truncate">{q.text}</span>
                   <button type="button" onClick={() => removeQuestion(i)} className="text-destructive/60 hover:text-destructive transition-colors flex-shrink-0">
                     <Trash2 className="w-3.5 h-3.5" />
@@ -1003,8 +1077,8 @@ function SurveysTab({ guildId }: { guildId: string }) {
             </div>
 
             {/* Add new question */}
-            <div className="border border-primary/20 bg-primary/5 p-3 space-y-2">
-              <p className="text-[9px] font-display text-primary/60 tracking-widest uppercase">Ajouter une question</p>
+            <div className={`border p-3 space-y-2 ${isPhotoMode ? 'border-pink-500/20 bg-pink-500/5' : 'border-primary/20 bg-primary/5'}`}>
+              <p className={`text-[9px] font-display tracking-widest uppercase ${isPhotoMode ? 'text-pink-400/60' : 'text-primary/60'}`}>Ajouter une question</p>
               <CyberInput
                 placeholder="Texte de la question…"
                 value={newQ.text}
@@ -1012,29 +1086,21 @@ function SurveysTab({ guildId }: { guildId: string }) {
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addQuestion(); } }}
               />
               <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setNewQ(p => ({ ...p, type: 'text' }))}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-display tracking-wider border cyber-clip-sm transition-all ${newQ.type === 'text' ? 'text-sky-400 border-sky-400/60 bg-sky-400/10' : 'text-muted-foreground border-muted-foreground/20 hover:border-muted-foreground/40'}`}
-                >
-                  <Type className="w-3 h-3" /> Texte
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setNewQ(p => ({ ...p, type: 'image' }))}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-display tracking-wider border cyber-clip-sm transition-all ${newQ.type === 'image' ? 'text-pink-400 border-pink-400/60 bg-pink-400/10' : 'text-muted-foreground border-muted-foreground/20 hover:border-muted-foreground/40'}`}
-                >
-                  <ImageIcon className="w-3 h-3" /> Image
-                </button>
-                <CyberButton type="button" size="sm" variant="secondary" onClick={addQuestion} className="ml-auto">
-                  <Plus className="w-3.5 h-3.5" />
+                <CyberButton type="button" size="sm" variant={isPhotoMode ? 'danger' : 'secondary'} onClick={addQuestion} className="ml-auto">
+                  <Plus className="w-3.5 h-3.5" /> Ajouter
                 </CyberButton>
               </div>
             </div>
           </div>
 
-          <CyberButton type="submit" isLoading={createPending} className="w-full" disabled={questions.filter(q => q.text.trim()).length === 0}>
-            Lancer le questionnaire
+          <CyberButton
+            type="submit"
+            isLoading={createPending}
+            className="w-full"
+            variant={isPhotoMode ? 'danger' : 'primary'}
+            disabled={questions.filter(q => q.text.trim()).length === 0}
+          >
+            {isPhotoMode ? '📸 Lancer le questionnaire photo' : '📝 Lancer le questionnaire'}
           </CyberButton>
         </form>
       </CyberCard>
@@ -1042,37 +1108,48 @@ function SurveysTab({ guildId }: { guildId: string }) {
       <div className="lg:col-span-2 space-y-4">
         <h2 className="text-lg font-bold text-foreground">Questionnaires actifs & passés</h2>
         <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1 scrollbar-none">
-          {surveys?.map(s => (
-            <CyberCard key={s.id} className="p-4" noClip>
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-semibold text-base text-primary">{s.title}</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Créé le {format(new Date(s.createdAt), 'd MMM yyyy', { locale: fr })}</p>
-                </div>
-                <CyberBadge variant={s.active ? 'primary' : 'outline'} dot={s.active}>{s.active ? 'ACTIF' : 'FERMÉ'}</CyberBadge>
-              </div>
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <div className="bg-background/50 border border-primary/10 p-3 cyber-clip-sm text-center">
-                  <span className="block text-[11px] font-display text-muted-foreground uppercase tracking-wider">Questions</span>
-                  <span className="font-bold text-lg text-foreground">{s.questions.length}</span>
-                </div>
-                <div className="bg-background/50 border border-primary/10 p-3 cyber-clip-sm text-center">
-                  <span className="block text-[11px] font-display text-muted-foreground uppercase tracking-wider">Réponses</span>
-                  <span className="font-bold text-lg text-primary">{s.responseCount}</span>
-                </div>
-              </div>
-              {s.questions.length > 0 && (
-                <div className="space-y-1">
-                  {s.questions.map((q: string, i: number) => (
-                    <div key={i} className="flex items-start gap-2 text-xs font-body text-muted-foreground">
-                      <span className="text-primary/50 font-display text-[9px] mt-0.5">{String(i + 1).padStart(2, '0')}.</span>
-                      <span>{q}</span>
+          {surveys?.map(s => {
+            const isPhoto = (s as any).type === 'fil-reponse';
+            const isSoumission = (s as any).type === 'soumission';
+            const typeIcon = isPhoto ? '📸' : isSoumission ? '📬' : '📝';
+            const typeLabel = isPhoto ? 'Photo+Texte' : isSoumission ? 'Soumission' : 'Texte';
+            return (
+              <CyberCard key={s.id} className="p-4" noClip>
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-base text-primary">{s.title}</h3>
+                      <span className={`text-[9px] font-display px-1.5 py-0.5 border tracking-wider ${isPhoto ? 'text-pink-400 border-pink-400/40 bg-pink-400/10' : isSoumission ? 'text-green-400 border-green-400/40 bg-green-400/10' : 'text-sky-400 border-sky-400/40 bg-sky-400/10'}`}>
+                        {typeIcon} {typeLabel}
+                      </span>
                     </div>
-                  ))}
+                    <p className="text-xs text-muted-foreground mt-0.5">Créé le {format(new Date(s.createdAt), 'd MMM yyyy', { locale: fr })}</p>
+                  </div>
+                  <CyberBadge variant={s.active ? 'primary' : 'outline'} dot={s.active}>{s.active ? 'ACTIF' : 'FERMÉ'}</CyberBadge>
                 </div>
-              )}
-            </CyberCard>
-          ))}
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div className="bg-background/50 border border-primary/10 p-3 cyber-clip-sm text-center">
+                    <span className="block text-[11px] font-display text-muted-foreground uppercase tracking-wider">Questions</span>
+                    <span className="font-bold text-lg text-foreground">{s.questions.length}</span>
+                  </div>
+                  <div className="bg-background/50 border border-primary/10 p-3 cyber-clip-sm text-center">
+                    <span className="block text-[11px] font-display text-muted-foreground uppercase tracking-wider">Réponses</span>
+                    <span className="font-bold text-lg text-primary">{s.responseCount}</span>
+                  </div>
+                </div>
+                {s.questions.length > 0 && (
+                  <div className="space-y-1">
+                    {s.questions.map((q: string, i: number) => (
+                      <div key={i} className="flex items-start gap-2 text-xs font-body text-muted-foreground">
+                        <span className={`font-display text-[9px] mt-0.5 ${isPhoto ? 'text-pink-400/50' : 'text-primary/50'}`}>{String(i + 1).padStart(2, '0')}.</span>
+                        <span>{q}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CyberCard>
+            );
+          })}
           {surveys?.length === 0 && <p className="text-muted-foreground italic text-sm">Aucun questionnaire actif.</p>}
         </div>
       </div>
