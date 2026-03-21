@@ -13,51 +13,121 @@ import { getOrCreateConfig, addLog } from "../lib/db.js";
 const adminPerm = PermissionFlagsBits.Administrator;
 const FOOTER = "⬡ ASTRAL TECHNOLOGIE — NEXUS v2.0";
 
+// ── Maintenance ON embed ──────────────────────────────────────────────────────
+function buildMaintenanceOnEmbed(reason: string, duration: string, operator: string) {
+  const now = new Date();
+  return new EmbedBuilder()
+    .setTitle("🔧 ⬡ PROTOCOLE MAINTENANCE — SYSTÈME SUSPENDU ⬡ 🔧")
+    .setColor(0xffa500)
+    .setDescription(
+      [
+        "```diff",
+        "- ⚠ SERVEUR TEMPORAIREMENT HORS LIGNE",
+        "- INTERVENTIONS TECHNIQUES EN COURS",
+        "- ACCÈS RESTREINT AUX OPÉRATEURS ACCRÉDITÉS",
+        "```",
+        "",
+        "> ⚙️ Notre équipe technique travaille activement pour rétablir le service.",
+        "> Merci de votre compréhension et de votre patience.",
+      ].join("\n")
+    )
+    .addFields(
+      {
+        name: "📋 RAPPORT TECHNIQUE",
+        value: [
+          "```yaml",
+          `Motif      : ${reason}`,
+          `Durée est. : ${duration}`,
+          `Opérateur  : ${operator}`,
+          `Heure      : ${now.toLocaleTimeString("fr-FR")} — ${now.toLocaleDateString("fr-FR")}`,
+          `Statut     : ⚠️ MAINTENANCE ACTIVE`,
+          "```",
+        ].join("\n"),
+        inline: false,
+      },
+      {
+        name: "🔒 ACCÈS EN VIGUEUR",
+        value: "```css\n[SUSPENDU] Transmissions utilisateurs\n[ACTIF]    Mode administrateur\n[EN COURS] Opérations techniques\n[VEILLE]   Intégrité réseau```",
+        inline: false,
+      },
+    )
+    .setFooter({ text: `${FOOTER} | 🔧 MAINTENANCE ACTIVE` })
+    .setTimestamp();
+}
+
+// ── Maintenance OFF embed ─────────────────────────────────────────────────────
+function buildMaintenanceOffEmbed(operator: string) {
+  return new EmbedBuilder()
+    .setTitle("✅ ⬡ MAINTENANCE TERMINÉE — NEXUS PLEINEMENT OPÉRATIONNEL ✅ ⬡")
+    .setColor(0x00ff88)
+    .setDescription(
+      [
+        "```diff",
+        "+ ✅ MAINTENANCE TECHNIQUE ACCOMPLIE",
+        "+ SERVEUR ENTIÈREMENT RÉTABLI",
+        "+ TOUTES LES FONCTIONNALITÉS OPÉRATIONNELLES",
+        "```",
+        "",
+        "> ✅ Le serveur est de nouveau pleinement opérationnel. Merci de votre patience !",
+      ].join("\n")
+    )
+    .addFields(
+      {
+        name: "📊 RAPPORT DE FIN DE MAINTENANCE",
+        value: [
+          "```yaml",
+          `Complété par : ${operator}`,
+          `Heure        : ${new Date().toLocaleTimeString("fr-FR")}`,
+          `Statut       : ✅ SYSTÈME NOMINAL`,
+          "```",
+        ].join("\n"),
+        inline: false,
+      },
+      {
+        name: "✅ SYSTÈMES RÉTABLIS",
+        value: "```diff\n+ Communications rétablies\n+ Permissions restaurées\n+ Optimisations appliquées\n+ Surveillance active```",
+        inline: false,
+      },
+    )
+    .setFooter({ text: `${FOOTER} | ✅ SERVEUR OPÉRATIONNEL` })
+    .setTimestamp();
+}
+
 export const maintenanceCommand = {
   data: new SlashCommandBuilder()
     .setName("maintenance")
     .setDescription("🔧 Activer le protocole de maintenance système")
     .setDefaultMemberPermissions(adminPerm)
-    .addStringOption((o) => o.setName("raison").setDescription("Motif de la maintenance").setRequired(false)),
+    .addStringOption((o) => o.setName("raison").setDescription("Motif de la maintenance").setRequired(true))
+    .addStringOption((o) => o.setName("duree").setDescription("Durée estimée (ex: 30 minutes, 2 heures)").setRequired(false)),
   async execute(interaction: ChatInputCommandInteraction) {
-    const reason = interaction.options.getString("raison") ?? "Maintenance technique programmée";
+    const reason = interaction.options.getString("raison", true);
+    const duration = interaction.options.getString("duree") ?? "Non précisée";
     await interaction.deferReply({ ephemeral: true });
 
     await getOrCreateConfig(interaction.guildId!);
     await db.update(guildConfigsTable)
-      .set({ maintenanceMode: true, maintenanceReason: reason })
+      .set({ maintenanceMode: true, maintenanceReason: reason, maintenanceDuration: duration })
       .where(eq(guildConfigsTable.guildId, interaction.guildId!));
 
-    const embed = new EmbedBuilder()
-      .setTitle("🔧 ⬡ PROTOCOLE MAINTENANCE — SYSTÈME SUSPENDU ⬡ 🔧")
-      .setColor(0xffa500)
-      .setDescription(
-        `\`\`\`diff\n- ⬡ NŒUD EN MAINTENANCE TECHNIQUE\n- COMMUNICATIONS UTILISATEURS SUSPENDUES\n- INTERVENTIONS ADMINISTRATIVES EN COURS\n- ACCÈS RESTREINT AUX OPÉRATEURS ACCRÉDITÉS\n\`\`\``
-      )
-      .addFields(
-        {
-          name: "📋 RAPPORT TECHNIQUE",
-          value: `\`\`\`yaml\nMotif     : ${reason}\nInitié par: ${interaction.user.username}\nHeure     : ${new Date().toLocaleTimeString("fr-FR")}\nStatut    : MAINTENANCE ACTIVE\`\`\``,
-          inline: false,
-        },
-        {
-          name: "🔒 RESTRICTIONS SYSTÈME",
-          value: "```css\n[BLOQUÉ] Transmissions utilisateurs\n[ACTIF] Accès administrateur\n[EN COURS] Opérations techniques\n[SURVEILLÉ] Intégrité du réseau```",
-          inline: false,
-        },
-      )
-      .setFooter({ text: `${FOOTER} | MAINTENANCE ACTIVE` })
-      .setTimestamp();
+    const embed = buildMaintenanceOnEmbed(reason, duration, interaction.user.username);
 
-    let notified = 0;
+    const messageIds: { channelId: string; messageId: string }[] = [];
     for (const channel of interaction.guild!.channels.cache.values()) {
       if (channel instanceof TextChannel) {
-        try { await channel.send({ embeds: [embed] }); notified++; } catch {}
+        try {
+          const msg = await channel.send({ embeds: [embed] });
+          messageIds.push({ channelId: channel.id, messageId: msg.id });
+        } catch {}
       }
     }
 
-    await interaction.editReply({ content: `✅ **PROTOCOLE MAINTENANCE ACTIVÉ** — ${notified} canal(aux) notifié(s)` });
-    await addLog({ guildId: interaction.guildId!, action: "MAINTENANCE_ON", moderatorId: interaction.user.id, moderatorName: interaction.user.username, details: reason });
+    await db.update(guildConfigsTable)
+      .set({ maintenanceMessageIds: JSON.stringify(messageIds) })
+      .where(eq(guildConfigsTable.guildId, interaction.guildId!));
+
+    await interaction.editReply({ content: `✅ **PROTOCOLE MAINTENANCE ACTIVÉ** — ${messageIds.length} canal(aux) notifié(s)` });
+    await addLog({ guildId: interaction.guildId!, action: "MAINTENANCE_ON", moderatorId: interaction.user.id, moderatorName: interaction.user.username, details: `${reason} — Durée: ${duration}` });
   },
 };
 
@@ -69,40 +139,43 @@ export const maintenanceOffCommand = {
   async execute(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply({ ephemeral: true });
 
-    await getOrCreateConfig(interaction.guildId!);
-    await db.update(guildConfigsTable)
-      .set({ maintenanceMode: false, maintenanceReason: null })
+    const [config] = await db.select().from(guildConfigsTable)
       .where(eq(guildConfigsTable.guildId, interaction.guildId!));
 
-    const embed = new EmbedBuilder()
-      .setTitle("⬡ ✅ MAINTENANCE COMPLÈTE — NEXUS PLEINEMENT OPÉRATIONNEL ✅ ⬡")
-      .setColor(0x00ff66)
-      .setDescription(
-        `\`\`\`diff\n+ MAINTENANCE TECHNIQUE ACCOMPLIE\n+ NŒUD PLEINEMENT OPÉRATIONNEL\n+ COMMUNICATIONS RÉTABLIES\n+ ACCÈS COMPLET RESTAURÉ\n\`\`\``
-      )
-      .addFields(
-        {
-          name: "📊 RAPPORT DE FIN DE MAINTENANCE",
-          value: `\`\`\`yaml\nComplété par : ${interaction.user.username}\nHeure        : ${new Date().toLocaleTimeString("fr-FR")}\nDurée        : Opération terminée\nStatut       : SYSTÈME NOMINAL\`\`\``,
-          inline: false,
-        },
-        {
-          name: "✅ SYSTÈMES EN LIGNE",
-          value: "```diff\n+ Communications rétablies\n+ Permissions restaurées\n+ Optimisations appliquées\n+ Surveillance active```",
-          inline: false,
-        },
-      )
-      .setFooter({ text: `${FOOTER} | SERVEUR OPÉRATIONNEL` })
-      .setTimestamp();
+    const offEmbed = buildMaintenanceOffEmbed(interaction.user.username);
+    let edited = 0;
 
-    let notified = 0;
-    for (const channel of interaction.guild!.channels.cache.values()) {
-      if (channel instanceof TextChannel) {
-        try { await channel.send({ embeds: [embed] }); notified++; } catch {}
+    // Edit stored messages
+    if (config?.maintenanceMessageIds) {
+      try {
+        const stored: { channelId: string; messageId: string }[] = JSON.parse(config.maintenanceMessageIds);
+        for (const { channelId, messageId } of stored) {
+          try {
+            const ch = interaction.guild!.channels.cache.get(channelId) as TextChannel | undefined;
+            if (ch) {
+              const msg = await ch.messages.fetch(messageId);
+              await msg.edit({ embeds: [offEmbed] });
+              edited++;
+            }
+          } catch {}
+        }
+      } catch {}
+    }
+
+    // Fallback: if no stored messages, send to all channels
+    if (edited === 0) {
+      for (const channel of interaction.guild!.channels.cache.values()) {
+        if (channel instanceof TextChannel) {
+          try { await channel.send({ embeds: [offEmbed] }); edited++; } catch {}
+        }
       }
     }
 
-    await interaction.editReply({ content: `✅ **MAINTENANCE TERMINÉE** — ${notified} canal(aux) notifié(s)` });
+    await db.update(guildConfigsTable)
+      .set({ maintenanceMode: false, maintenanceReason: null, maintenanceDuration: null, maintenanceMessageIds: null })
+      .where(eq(guildConfigsTable.guildId, interaction.guildId!));
+
+    await interaction.editReply({ content: `✅ **MAINTENANCE TERMINÉE** — ${edited} message(s) mis à jour` });
     await addLog({ guildId: interaction.guildId!, action: "MAINTENANCE_OFF", moderatorId: interaction.user.id, moderatorName: interaction.user.username });
   },
 };
@@ -175,9 +248,7 @@ export const panelCommand = {
     const embed = new EmbedBuilder()
       .setTitle("⬡ PANNEAU DE CONTRÔLE ASTRAL")
       .setColor(0x00f0ff)
-      .setDescription(
-        `\`\`\`css\n[ACCÈS AU NEXUS DE CONTRÔLE]\n[INTERFACE ADMINISTRATEUR]\n\`\`\``
-      )
+      .setDescription(`\`\`\`css\n[ACCÈS AU NEXUS DE CONTRÔLE]\n[INTERFACE ADMINISTRATEUR]\n\`\`\``)
       .addFields(
         { name: "🔗 LIEN D'ACCÈS", value: panelUrl, inline: false },
         { name: "ℹ️ INFO", value: "Connexion via Discord OAuth — Réservé aux administrateurs", inline: false },

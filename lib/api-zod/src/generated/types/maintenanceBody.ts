@@ -9,4 +9,5 @@
 export interface MaintenanceBody {
   enabled: boolean;
   reason?: string | null;
+  duration?: string | null;
 }

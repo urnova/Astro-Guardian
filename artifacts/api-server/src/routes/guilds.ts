@@ -350,37 +350,86 @@ router.get("/:guildId/surveys/:surveyId", async (req, res) => {
 router.post("/:guildId/actions/maintenance", async (req, res) => {
   try {
     const { guildId } = req.params;
-    const { enabled, reason } = req.body;
+    const { enabled, reason, duration } = req.body;
+    const resolvedReason = reason ?? "Maintenance via le panel de contrôle";
+    const resolvedDuration = duration ?? "Non précisée";
+    const FOOTER = "⬡ ASTRAL TECHNOLOGIE — NEXUS v2.0";
 
     await getOrCreateConfig(guildId);
-    await db
-      .update(guildConfigsTable)
-      .set({ maintenanceMode: enabled, maintenanceReason: reason ?? null })
-      .where(eq(guildConfigsTable.guildId, guildId));
 
     const client = getBotClient();
-    if (client) {
-      const guild = client.guilds.cache.get(guildId);
-      if (guild) {
-        const embed = new EmbedBuilder()
-          .setTitle(enabled ? "🚧 ⚠️ MAINTENANCE EN COURS ⚠️ 🚧" : "🎉 ✨ MAINTENANCE TERMINÉE ✨ 🎉")
-          .setDescription(enabled
-            ? `\`\`\`diff\n- SERVEUR EN MAINTENANCE\n- Raison: ${reason ?? "Maintenance technique"}\n\`\`\``
-            : "```diff\n+ SERVEUR OPÉRATIONNEL\n+ Toutes les fonctionnalités rétablies\n```"
-          )
-          .setColor(enabled ? 0xffa500 : 0x00ff66)
-          .setTimestamp();
+    const guild = client?.guilds.cache.get(guildId);
 
+    if (enabled) {
+      const now = new Date();
+      const onEmbed = new EmbedBuilder()
+        .setTitle("🔧 ⬡ PROTOCOLE MAINTENANCE — SYSTÈME SUSPENDU ⬡ 🔧")
+        .setColor(0xffa500)
+        .setDescription(
+          ["```diff", "- ⚠ SERVEUR TEMPORAIREMENT HORS LIGNE", "- INTERVENTIONS TECHNIQUES EN COURS", "- ACCÈS RESTREINT AUX OPÉRATEURS ACCRÉDITÉS", "```", "", "> ⚙️ Notre équipe technique travaille activement pour rétablir le service.", "> Merci de votre compréhension et de votre patience."].join("\n")
+        )
+        .addFields(
+          { name: "📋 RAPPORT TECHNIQUE", value: ["```yaml", `Motif      : ${resolvedReason}`, `Durée est. : ${resolvedDuration}`, `Opérateur  : Panel Astral`, `Heure      : ${now.toLocaleTimeString("fr-FR")} — ${now.toLocaleDateString("fr-FR")}`, `Statut     : ⚠️ MAINTENANCE ACTIVE`, "```"].join("\n"), inline: false },
+          { name: "🔒 ACCÈS EN VIGUEUR", value: "```css\n[SUSPENDU] Transmissions utilisateurs\n[ACTIF]    Mode administrateur\n[EN COURS] Opérations techniques\n[VEILLE]   Intégrité réseau```", inline: false },
+        )
+        .setFooter({ text: `${FOOTER} | 🔧 MAINTENANCE ACTIVE` })
+        .setTimestamp();
+
+      const messageIds: { channelId: string; messageId: string }[] = [];
+      if (guild) {
         for (const ch of guild.channels.cache.values()) {
           if (ch instanceof TextChannel) {
-            try { await ch.send({ embeds: [embed] }); } catch {}
+            try { const msg = await ch.send({ embeds: [onEmbed] }); messageIds.push({ channelId: ch.id, messageId: msg.id }); } catch {}
           }
         }
       }
+
+      await db.update(guildConfigsTable)
+        .set({ maintenanceMode: true, maintenanceReason: resolvedReason, maintenanceDuration: resolvedDuration, maintenanceMessageIds: JSON.stringify(messageIds) })
+        .where(eq(guildConfigsTable.guildId, guildId));
+
+    } else {
+      // Get stored message IDs to edit
+      const [config] = await db.select().from(guildConfigsTable).where(eq(guildConfigsTable.guildId, guildId));
+
+      const offEmbed = new EmbedBuilder()
+        .setTitle("✅ ⬡ MAINTENANCE TERMINÉE — NEXUS PLEINEMENT OPÉRATIONNEL ✅ ⬡")
+        .setColor(0x00ff88)
+        .setDescription(["```diff", "+ ✅ MAINTENANCE TECHNIQUE ACCOMPLIE", "+ SERVEUR ENTIÈREMENT RÉTABLI", "+ TOUTES LES FONCTIONNALITÉS OPÉRATIONNELLES", "```", "", "> ✅ Le serveur est de nouveau pleinement opérationnel. Merci de votre patience !"].join("\n"))
+        .addFields(
+          { name: "📊 RAPPORT DE FIN DE MAINTENANCE", value: ["```yaml", `Complété à  : ${new Date().toLocaleTimeString("fr-FR")}`, `Statut      : ✅ SYSTÈME NOMINAL`, "```"].join("\n"), inline: false },
+          { name: "✅ SYSTÈMES RÉTABLIS", value: "```diff\n+ Communications rétablies\n+ Permissions restaurées\n+ Optimisations appliquées```", inline: false },
+        )
+        .setFooter({ text: `${FOOTER} | ✅ SERVEUR OPÉRATIONNEL` })
+        .setTimestamp();
+
+      let edited = 0;
+      if (config?.maintenanceMessageIds && guild) {
+        try {
+          const stored: { channelId: string; messageId: string }[] = JSON.parse(config.maintenanceMessageIds);
+          for (const { channelId, messageId } of stored) {
+            try {
+              const ch = guild.channels.cache.get(channelId) as TextChannel | undefined;
+              if (ch) { const msg = await ch.messages.fetch(messageId); await msg.edit({ embeds: [offEmbed] }); edited++; }
+            } catch {}
+          }
+        } catch {}
+      }
+      if (edited === 0 && guild) {
+        for (const ch of guild.channels.cache.values()) {
+          if (ch instanceof TextChannel) { try { await ch.send({ embeds: [offEmbed] }); } catch {} }
+        }
+      }
+
+      await db.update(guildConfigsTable)
+        .set({ maintenanceMode: false, maintenanceReason: null, maintenanceDuration: null, maintenanceMessageIds: null })
+        .where(eq(guildConfigsTable.guildId, guildId));
     }
 
+    await addLog({ guildId, action: enabled ? "MAINTENANCE_ON" : "MAINTENANCE_OFF", details: enabled ? `${resolvedReason} — Durée: ${resolvedDuration} — via Panel` : "Levée via Panel" });
     res.json({ success: true, message: `Mode maintenance ${enabled ? "activé" : "désactivé"}` });
-  } catch {
+  } catch (err) {
+    console.error("[maintenance route]", err);
     res.status(500).json({ error: "Erreur serveur" });
   }
 });
@@ -389,39 +438,98 @@ router.post("/:guildId/actions/breach", async (req, res) => {
   try {
     const { guildId } = req.params;
     const { enabled, reason } = req.body;
+    const resolvedReason = reason ?? "Urgence sécuritaire — Panel de contrôle";
+    const FOOTER = "⬡ ASTRAL TECHNOLOGIE — NEXUS v2.0";
 
     await getOrCreateConfig(guildId);
-    await db
-      .update(guildConfigsTable)
-      .set({ breachMode: enabled })
-      .where(eq(guildConfigsTable.guildId, guildId));
 
     const client = getBotClient();
-    if (client) {
-      const guild = client.guilds.cache.get(guildId);
-      if (guild) {
-        const embed = new EmbedBuilder()
-          .setTitle(enabled ? "🚨 ⚠️ ALERTE — BRÈCHE DE SÉCURITÉ" : "🎉 BRÈCHE RÉSOLUE — SERVEUR OPÉRATIONNEL")
-          .setDescription(enabled
-            ? `\`\`\`diff\n- CONFINEMENT TOTAL ACTIVÉ\n- Raison: ${reason ?? "Urgence sécuritaire"}\n\`\`\``
-            : "```diff\n+ CONFINEMENT LEVÉ\n+ Accès rétabli\n```"
-          )
-          .setColor(enabled ? 0xff0000 : 0x00ff66)
-          .setTimestamp();
+    const guild = client?.guilds.cache.get(guildId);
 
+    if (enabled) {
+      const now = new Date();
+      const onEmbed = new EmbedBuilder()
+        .setTitle("🚨 ⬛ ALERTE CRITIQUE — BRÈCHE DE SÉCURITÉ DÉTECTÉE ⬛ 🚨")
+        .setColor(0xff0000)
+        .setDescription(
+          ["```diff", "- ⚠ CONFINEMENT TOTAL ACTIVÉ", "- ACCÈS UTILISATEURS COUPÉS", "- PROTOCOLES DÉFENSIFS ENGAGÉS", "- SURVEILLANCE MAXIMALE ACTIVE", "- TOUTES LES COMMUNICATIONS BLOQUÉES", "```", "", "> 🔴 **Une brèche de sécurité a été détectée. Le serveur est en confinement total.**", "> Restez calmes. Les administrateurs gèrent la situation."].join("\n")
+        )
+        .addFields(
+          { name: "🔴 RAPPORT DE BRÈCHE", value: ["```yaml", `Menace     : ${resolvedReason}`, `Opérateur  : Panel Astral`, `Heure      : ${now.toLocaleTimeString("fr-FR")} — ${now.toLocaleDateString("fr-FR")}`, `Statut     : 🔴 CONFINEMENT ACTIF`, "```"].join("\n"), inline: false },
+          { name: "🛡️ PROTOCOLES ENGAGÉS", value: "```css\n[VERROUILLÉ] Toutes les communications\n[ACTIF]      Surveillance renforcée\n[ENGAGÉ]     Mode défensif maximal\n[BLOQUÉ]     Accès membre standard```", inline: false },
+          { name: "⚠️ INSTRUCTIONS", value: "```fix\nNe pas paniquer. Ne pas tenter de contourner le confinement.\nAttenez les instructions des administrateurs.\n```", inline: false },
+        )
+        .setFooter({ text: `${FOOTER} | 🔴 CONFINEMENT ACTIF` })
+        .setTimestamp();
+
+      const messageIds: { channelId: string; messageId: string }[] = [];
+      if (guild) {
         for (const ch of guild.channels.cache.values()) {
           if (ch instanceof TextChannel) {
             try {
-              await ch.permissionOverwrites.edit(guild.roles.everyone, { SendMessages: enabled ? false : null });
-              await ch.send({ embeds: [embed] });
+              await ch.permissionOverwrites.edit(guild.roles.everyone, { SendMessages: false });
+              const msg = await ch.send({ embeds: [onEmbed] });
+              messageIds.push({ channelId: ch.id, messageId: msg.id });
             } catch {}
           }
         }
       }
+
+      await db.update(guildConfigsTable)
+        .set({ breachMode: true, breachReason: resolvedReason, breachMessageIds: JSON.stringify(messageIds) })
+        .where(eq(guildConfigsTable.guildId, guildId));
+
+    } else {
+      const [config] = await db.select().from(guildConfigsTable).where(eq(guildConfigsTable.guildId, guildId));
+
+      const offEmbed = new EmbedBuilder()
+        .setTitle("✅ ⬡ CONFINEMENT LEVÉ — NEXUS SÉCURISÉ ✅ ⬡")
+        .setColor(0x00ff66)
+        .setDescription(["```diff", "+ PROTOCOLE DE CONFINEMENT DÉSACTIVÉ", "+ ACCÈS UTILISATEURS RÉTABLIS", "+ COMMUNICATIONS NORMALISÉES", "+ NEXUS PLEINEMENT SÉCURISÉ", "```", "", "> ✅ **La menace a été neutralisée. Le serveur est de nouveau accessible.**", "> Merci de votre coopération pendant cette période."].join("\n"))
+        .addFields(
+          { name: "✅ RAPPORT DE RÉTABLISSEMENT", value: ["```yaml", `Levée à    : ${new Date().toLocaleTimeString("fr-FR")}`, `Statut     : ✅ SÉCURITÉ RÉTABLIE`, "```"].join("\n"), inline: false },
+          { name: "🎊 SYSTÈMES RÉTABLIS", value: "```diff\n+ Communications rétablies\n+ Permissions restaurées\n+ Accès membres normalisé```", inline: false },
+        )
+        .setFooter({ text: `${FOOTER} | ✅ SÉCURITÉ RÉTABLIE` })
+        .setTimestamp();
+
+      // Unlock all channels
+      if (guild) {
+        for (const ch of guild.channels.cache.values()) {
+          if (ch instanceof TextChannel) {
+            try { await ch.permissionOverwrites.edit(guild.roles.everyone, { SendMessages: null }); } catch {}
+          }
+        }
+      }
+
+      // Edit stored messages
+      let edited = 0;
+      if (config?.breachMessageIds && guild) {
+        try {
+          const stored: { channelId: string; messageId: string }[] = JSON.parse(config.breachMessageIds);
+          for (const { channelId, messageId } of stored) {
+            try {
+              const ch = guild.channels.cache.get(channelId) as TextChannel | undefined;
+              if (ch) { const msg = await ch.messages.fetch(messageId); await msg.edit({ embeds: [offEmbed] }); edited++; }
+            } catch {}
+          }
+        } catch {}
+      }
+      if (edited === 0 && guild) {
+        for (const ch of guild.channels.cache.values()) {
+          if (ch instanceof TextChannel) { try { await ch.send({ embeds: [offEmbed] }); } catch {} }
+        }
+      }
+
+      await db.update(guildConfigsTable)
+        .set({ breachMode: false, breachReason: null, breachMessageIds: null })
+        .where(eq(guildConfigsTable.guildId, guildId));
     }
 
+    await addLog({ guildId, action: enabled ? "BREACH_ON" : "BREACH_OFF", details: enabled ? `${resolvedReason} — via Panel` : "Levée via Panel" });
     res.json({ success: true, message: `Mode brèche ${enabled ? "activé" : "désactivé"}` });
-  } catch {
+  } catch (err) {
+    console.error("[breach route]", err);
     res.status(500).json({ error: "Erreur serveur" });
   }
 });

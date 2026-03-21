@@ -1266,6 +1266,9 @@ components:
         reason:
           type: string
           nullable: true
+        duration:
+          type: string
+          nullable: true
       required: [enabled]
 
     BreachBody:

@@ -173,6 +173,7 @@ export interface CreateSurveyBody {
 export interface MaintenanceBody {
   enabled: boolean;
   reason?: string | null;
+  duration?: string | null;
 }
 
 export interface BreachBody {

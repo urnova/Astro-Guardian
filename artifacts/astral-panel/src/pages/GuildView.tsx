@@ -508,22 +508,35 @@ function SecurityTab({ guildId }: { guildId: string }) {
   const { toast } = useToast();
 
   const [nukeChannelId, setNukeChannelId] = useState('');
+  const [maintReason, setMaintReason] = useState('');
+  const [maintDuration, setMaintDuration] = useState('');
+  const [breachReasonInput, setBreachReasonInput] = useState('');
 
   const handleMaintenance = (enabled: boolean) => {
-    toggleMaintenance({ guildId, data: { enabled, reason: 'Maintenance via le panel' } }, {
+    if (enabled && !maintReason.trim()) {
+      toast({ title: 'Veuillez indiquer un motif de maintenance', variant: 'destructive' });
+      return;
+    }
+    toggleMaintenance({ guildId, data: { enabled, reason: enabled ? maintReason : undefined, duration: enabled ? (maintDuration || undefined) : undefined } }, {
       onSuccess: () => {
-        toast({ title: enabled ? 'Mode maintenance activé' : 'Maintenance levée' });
+        toast({ title: enabled ? '🔧 Maintenance activée — Serveur suspendu' : '✅ Maintenance levée — Serveur en ligne' });
         queryClient.invalidateQueries({ queryKey: [`/api/guilds/${guildId}/config`] });
+        if (!enabled) { setMaintReason(''); setMaintDuration(''); }
       }
     });
   };
 
   const handleBreach = (enabled: boolean) => {
-    if (enabled && !confirm('⚠️ Cela va verrouiller entièrement le serveur. Continuer ?')) return;
-    toggleBreach({ guildId, data: { enabled, reason: 'Brèche détectée via le panel' } }, {
+    if (enabled && !breachReasonInput.trim()) {
+      toast({ title: 'Veuillez indiquer le motif de la brèche', variant: 'destructive' });
+      return;
+    }
+    if (enabled && !confirm('⚠️ CONFINEMENT TOTAL : Cela va verrouiller TOUS les canaux. Êtes-vous certain ?')) return;
+    toggleBreach({ guildId, data: { enabled, reason: enabled ? breachReasonInput : undefined } }, {
       onSuccess: () => {
-        toast({ title: enabled ? 'Protocole de brèche engagé' : 'Brèche résolue', variant: enabled ? 'destructive' : 'default' });
+        toast({ title: enabled ? '🚨 BRÈCHE CONFINÉE — Serveur verrouillé' : '✅ Confinement levé — Serveur sécurisé', variant: enabled ? 'destructive' : 'default' });
         queryClient.invalidateQueries({ queryKey: [`/api/guilds/${guildId}/config`] });
+        if (!enabled) setBreachReasonInput('');
       }
     });
   };
@@ -545,6 +558,46 @@ function SecurityTab({ guildId }: { guildId: string }) {
 
   return (
     <div className="space-y-8">
+      {/* ── Overlay de brèche critique ─────────────────────────────────────────── */}
+      {config?.breachMode && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 pointer-events-none z-40"
+          style={{ mixBlendMode: 'multiply' }}
+        >
+          {/* Scanlines rouges */}
+          <div className="absolute inset-0 breach-scanlines" />
+          {/* Vignette pulsante rouge */}
+          <div className="absolute inset-0 breach-vignette animate-breach-pulse" />
+          {/* Bordure pulsante rouge */}
+          <div className="absolute inset-0 border-4 border-red-500/60 animate-breach-border" />
+        </motion.div>
+      )}
+
+      {/* ── Bannière d'alerte brèche ───────────────────────────────────────────── */}
+      {config?.breachMode && (
+        <motion.div
+          initial={{ y: -40, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="relative overflow-hidden rounded border border-red-500/60 bg-red-950/40 p-4"
+        >
+          <div className="absolute inset-0 breach-scanlines opacity-30" />
+          <div className="relative flex items-center gap-4">
+            <ShieldAlert className="w-8 h-8 text-red-400 animate-pulse shrink-0" />
+            <div className="flex-1">
+              <p className="font-display text-lg text-red-300 tracking-[0.15em] animate-pulse">
+                ⬛ ALERTE CRITIQUE — CONFINEMENT TOTAL ACTIF ⬛
+              </p>
+              <p className="font-body text-xs text-red-400/80 mt-1">
+                Tous les canaux sont verrouillés. Accès membres bloqué. Utilisez le bouton ci-dessous pour lever le confinement.
+              </p>
+            </div>
+            <CyberBadge variant="destructive" className="animate-pulse shrink-0">CRITIQUE</CyberBadge>
+          </div>
+        </motion.div>
+      )}
+
       {/* Status des protections */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {protections.map(p => (
@@ -562,58 +615,128 @@ function SecurityTab({ guildId }: { guildId: string }) {
       <p className="text-xs text-muted-foreground -mt-4">Pour modifier ces protections, rendez-vous dans l'onglet <strong>Configuration</strong>.</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Maintenance */}
+        {/* ── Maintenance ──────────────────────────────────────────────────────── */}
         <CyberCard glowing={config?.maintenanceMode}>
-          <div className="flex items-center gap-4 mb-6">
-            <Wrench className={`w-8 h-8 ${config?.maintenanceMode ? 'text-primary animate-spin' : 'text-muted-foreground'}`} />
+          <div className="flex items-center gap-4 mb-5">
+            <Wrench className={`w-8 h-8 ${config?.maintenanceMode ? 'text-amber-400 animate-spin' : 'text-muted-foreground'}`} />
             <div>
               <h2 className="text-lg font-bold text-foreground">Mode Maintenance</h2>
-              <p className="text-sm text-muted-foreground">Suspendre l'accès pour des mises à jour techniques</p>
+              <p className="text-sm text-muted-foreground">Suspendre le serveur pour des interventions techniques</p>
             </div>
           </div>
-          <div className="flex items-center justify-between p-4 bg-background/50 border border-primary/20 rounded mb-5">
+
+          <div className="flex items-center justify-between p-3 bg-background/50 border border-primary/20 rounded mb-4">
             <span className="font-body text-sm text-muted-foreground">Statut actuel</span>
             {config?.maintenanceMode ? (
-              <CyberBadge variant="primary" className="animate-pulse">ACTIF</CyberBadge>
+              <CyberBadge variant="primary" className="animate-pulse">⚙️ ACTIF</CyberBadge>
             ) : (
               <CyberBadge variant="outline">INACTIF</CyberBadge>
             )}
           </div>
+
+          {!config?.maintenanceMode && (
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="font-body text-xs text-muted-foreground uppercase tracking-wider mb-1 block">
+                  Motif de la maintenance <span className="text-destructive">*</span>
+                </label>
+                <input
+                  className="w-full bg-background/60 border border-primary/30 rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/70 transition-colors"
+                  placeholder="Ex: Mise à jour des systèmes, migration DB..."
+                  value={maintReason}
+                  onChange={e => setMaintReason(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="font-body text-xs text-muted-foreground uppercase tracking-wider mb-1 block">
+                  Durée estimée <span className="text-muted-foreground/50">(optionnel)</span>
+                </label>
+                <input
+                  className="w-full bg-background/60 border border-primary/30 rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/70 transition-colors"
+                  placeholder="Ex: 30 minutes, 2 heures..."
+                  value={maintDuration}
+                  onChange={e => setMaintDuration(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
           {config?.maintenanceMode ? (
-            <CyberButton variant="outline" className="w-full" onClick={() => handleMaintenance(false)} isLoading={maintPending}>
-              Désactiver la maintenance
-            </CyberButton>
+            <>
+              {(config as any).maintenanceReason && (
+                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-300 font-body">
+                  <span className="text-amber-400 font-semibold">Motif :</span> {(config as any).maintenanceReason}
+                  {(config as any).maintenanceDuration && <span className="ml-2 text-amber-400/70">— {(config as any).maintenanceDuration}</span>}
+                </div>
+              )}
+              <CyberButton variant="outline" className="w-full" onClick={() => handleMaintenance(false)} isLoading={maintPending}>
+                ✅ Terminer la maintenance
+              </CyberButton>
+            </>
           ) : (
             <CyberButton className="w-full" onClick={() => handleMaintenance(true)} isLoading={maintPending}>
-              Activer la maintenance
+              🔧 Activer la maintenance
             </CyberButton>
           )}
         </CyberCard>
 
-        {/* Brèche */}
-        <CyberCard glowing={config?.breachMode} className={config?.breachMode ? 'border-destructive/50' : ''}>
-          <div className="flex items-center gap-4 mb-6">
-            <ShieldAlert className={`w-8 h-8 ${config?.breachMode ? 'text-destructive animate-pulse' : 'text-muted-foreground'}`} />
+        {/* ── Brèche ───────────────────────────────────────────────────────────── */}
+        <CyberCard
+          glowing={config?.breachMode}
+          className={config?.breachMode ? 'border-red-500/60 shadow-[0_0_30px_rgba(239,68,68,0.3)]' : ''}
+        >
+          <div className="flex items-center gap-4 mb-5">
+            <ShieldAlert className={`w-8 h-8 ${config?.breachMode ? 'text-red-400 animate-pulse' : 'text-muted-foreground'}`} />
             <div>
-              <h2 className="text-lg font-bold text-foreground">Protocole de Brèche</h2>
-              <p className="text-sm text-muted-foreground">Verrouillage d'urgence complet du serveur</p>
+              <h2 className={`text-lg font-bold ${config?.breachMode ? 'text-red-300' : 'text-foreground'}`}>
+                Protocole de Brèche
+              </h2>
+              <p className="text-sm text-muted-foreground">Confinement total d'urgence — verrouille tous les canaux</p>
             </div>
           </div>
-          <div className="flex items-center justify-between p-4 bg-background/50 border border-primary/20 rounded mb-5">
+
+          <div className={`flex items-center justify-between p-3 rounded mb-4 border ${config?.breachMode ? 'bg-red-950/30 border-red-500/40' : 'bg-background/50 border-primary/20'}`}>
             <span className="font-body text-sm text-muted-foreground">Statut actuel</span>
             {config?.breachMode ? (
-              <CyberBadge variant="destructive" className="animate-pulse">CRITIQUE</CyberBadge>
+              <CyberBadge variant="destructive" className="animate-pulse">🔴 CONFINEMENT ACTIF</CyberBadge>
             ) : (
-              <CyberBadge variant="outline">SÉCURISÉ</CyberBadge>
+              <CyberBadge variant="outline">🟢 SÉCURISÉ</CyberBadge>
             )}
           </div>
+
+          {!config?.breachMode && (
+            <div className="mb-4">
+              <label className="font-body text-xs text-muted-foreground uppercase tracking-wider mb-1 block">
+                Motif de la brèche <span className="text-destructive">*</span>
+              </label>
+              <input
+                className="w-full bg-background/60 border border-red-500/30 rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-red-500/70 transition-colors"
+                placeholder="Ex: Intrusion détectée, raid en cours, compte compromis..."
+                value={breachReasonInput}
+                onChange={e => setBreachReasonInput(e.target.value)}
+              />
+            </div>
+          )}
+
           {config?.breachMode ? (
-            <CyberButton variant="primary" className="w-full" onClick={() => handleBreach(false)} isLoading={breachPending}>
-              Résoudre la brèche
-            </CyberButton>
+            <>
+              {(config as any).breachReason && (
+                <div className="mb-4 p-3 bg-red-950/30 border border-red-500/30 rounded text-xs text-red-300 font-body">
+                  <span className="text-red-400 font-semibold">Menace :</span> {(config as any).breachReason}
+                </div>
+              )}
+              <CyberButton variant="primary" className="w-full" onClick={() => handleBreach(false)} isLoading={breachPending}>
+                🔓 Lever le confinement
+              </CyberButton>
+            </>
           ) : (
-            <CyberButton variant="destructive" className="w-full" onClick={() => handleBreach(true)} isLoading={breachPending}>
-              Engager le verrouillage
+            <CyberButton
+              variant="destructive"
+              className="w-full font-bold tracking-widest"
+              onClick={() => handleBreach(true)}
+              isLoading={breachPending}
+            >
+              🚨 ENGAGER LE CONFINEMENT
             </CyberButton>
           )}
         </CyberCard>
@@ -1363,8 +1486,18 @@ const LOG_META: Record<string, { icon: string; variant: string; color: string }>
   DM:             { icon: '📨', variant: 'primary',     color: 'border-primary/30 bg-primary/5' },
   RULES_SETUP:    { icon: '📋', variant: 'info',        color: 'border-sky-400/30 bg-sky-400/5' },
   RULES_ACCEPTED: { icon: '✅', variant: 'success',     color: 'border-emerald-500/40 bg-emerald-500/5' },
-  GIVEAWAY_START: { icon: '🎉', variant: 'pink',        color: 'border-pink-400/40 bg-pink-400/5' },
-  GIVEAWAY_END:   { icon: '🏁', variant: 'outline',     color: 'border-slate-400/30 bg-slate-400/5' },
+  GIVEAWAY_START:         { icon: '🎉', variant: 'pink',        color: 'border-pink-400/40 bg-pink-400/5' },
+  GIVEAWAY_END:           { icon: '🏁', variant: 'outline',     color: 'border-slate-400/30 bg-slate-400/5' },
+  ROLE_UPDATE:            { icon: '🎨', variant: 'info',        color: 'border-sky-400/40 bg-sky-400/5' },
+  CHANNEL_UPDATE:         { icon: '📝', variant: 'info',        color: 'border-sky-400/40 bg-sky-400/5' },
+  MEMBER_TIMEOUT:         { icon: '⏱️', variant: 'warning',     color: 'border-amber-500/60 bg-amber-500/5' },
+  MEMBER_TIMEOUT_REMOVE:  { icon: '⏱️', variant: 'success',     color: 'border-emerald-400/40 bg-emerald-400/5' },
+  SERVER_UPDATE:          { icon: '🏰', variant: 'primary',     color: 'border-primary/40 bg-primary/5' },
+  EMOJI_CREATE:           { icon: '😊', variant: 'success',     color: 'border-emerald-400/40 bg-emerald-400/5' },
+  EMOJI_DELETE:           { icon: '😶', variant: 'destructive', color: 'border-red-400/40 bg-red-400/5' },
+  EVENT_CREATE:           { icon: '📅', variant: 'purple',      color: 'border-purple-400/40 bg-purple-400/5' },
+  ANTIRAID:               { icon: '🛡️', variant: 'info',        color: 'border-sky-400/40 bg-sky-400/5' },
+  AUTOMOD:                { icon: '🤖', variant: 'info',        color: 'border-sky-400/40 bg-sky-400/5' },
 };
 
 const getLogMeta = (action: string) =>

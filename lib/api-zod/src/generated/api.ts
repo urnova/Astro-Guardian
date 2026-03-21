@@ -522,6 +522,7 @@ export const TriggerMaintenanceParams = zod.object({
 export const TriggerMaintenanceBody = zod.object({
   enabled: zod.boolean(),
   reason: zod.string().nullish(),
+  duration: zod.string().nullish(),
 });
 
 export const TriggerMaintenanceResponse = zod.object({

@@ -224,3 +224,32 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--primary) / 0.6);
 }
+
+/* ─── Breach Protocol Animations ────────────────────────────────────────── */
+@keyframes breach-pulse {
+  0%, 100% { opacity: 0.15; }
+  50%       { opacity: 0.45; }
+}
+@keyframes breach-border-pulse {
+  0%, 100% { box-shadow: inset 0 0 0 4px rgba(239, 68, 68, 0.3); }
+  50%       { box-shadow: inset 0 0 0 4px rgba(239, 68, 68, 0.8), 0 0 40px rgba(239, 68, 68, 0.4); }
+}
+.animate-breach-pulse  { animation: breach-pulse 1.5s ease-in-out infinite; }
+.animate-breach-border { animation: breach-border-pulse 1.5s ease-in-out infinite; }
+
+.breach-scanlines {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(239, 68, 68, 0.04) 3px,
+    rgba(239, 68, 68, 0.04) 6px
+  );
+}
+.breach-vignette {
+  background: radial-gradient(
+    ellipse at center,
+    transparent 30%,
+    rgba(239, 68, 68, 0.25) 100%
+  );
+}
