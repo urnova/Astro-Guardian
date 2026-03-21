@@ -171,7 +171,7 @@ export const panelCommand = {
     .setDescription("🔗 Obtenir le lien du panneau de contrôle Astral")
     .setDefaultMemberPermissions(adminPerm),
   async execute(interaction: ChatInputCommandInteraction) {
-    const panelUrl = process.env.PANEL_URL ?? "https://astro-guardian--eoprivate42.replit.app";
+    const panelUrl = process.env.PANEL_URL ?? "https://astro-guardian--zozooscul.replit.app";
     const embed = new EmbedBuilder()
       .setTitle("⬡ PANNEAU DE CONTRÔLE ASTRAL")
       .setColor(0x00f0ff)
