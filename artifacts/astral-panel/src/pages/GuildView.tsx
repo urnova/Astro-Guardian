@@ -1,11 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useRoute } from 'wouter';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { motion } from 'framer-motion';
 import { 
   Activity, ShieldAlert, Settings, MessageSquare, 
   Gift, CheckSquare, ListOrdered, Wrench, Shield, AlertTriangle, Users, Hash, FileText,
-  Search, Zap, UserCheck, Bomb, Filter, UserPlus
+  Search, Zap, UserCheck, Bomb, Filter, UserPlus, Plus, Trash2, ImageIcon, Type
 } from 'lucide-react';
 import { 
   useGetGuildConfig, useUpdateGuildConfig, useGetGuildStats,
@@ -22,6 +23,7 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { CyberCard, CyberButton, CyberInput, CyberBadge, CyberSelect } from '@/components/CyberUI';
+import { VariablePicker, insertAtCursor } from '@/components/VariablePicker';
 import { useToast } from '@/hooks/use-toast';
 
 type Tab = 'overview' | 'config' | 'welcome' | 'moderation' | 'security' | 'messaging' | 'giveaways' | 'surveys' | 'rules' | 'logs';
@@ -646,17 +648,25 @@ function SecurityTab({ guildId }: { guildId: string }) {
 /* ─────────────────── Messagerie ─────────────────── */
 function MessagingTab({ guildId }: { guildId: string }) {
   const { data: channels } = useGetGuildChannels(guildId);
-  const { data: members } = useGetGuildMembers(guildId);
+  const { data: members }  = useGetGuildMembers(guildId);
+  const { data: roles }    = useGetGuildRoles(guildId);
   const { mutate: sendSay, isPending: sayPending } = useSendSay();
   const { mutate: sendAnnounce, isPending: annPending } = useSendAnnouncement();
   const { mutate: sendEmbed, isPending: embedPending } = useSendEmbed();
   const { mutate: sendDm, isPending: dmPending } = useSendDm();
   const { toast } = useToast();
 
+  const sayRef   = useRef<HTMLTextAreaElement>(null);
+  const annRef   = useRef<HTMLTextAreaElement>(null);
+  const embedRef = useRef<HTMLTextAreaElement>(null);
+  const dmRef    = useRef<HTMLTextAreaElement>(null);
+
   const [sayData,   setSayData]   = useState({ channelId: '', message: '' });
   const [annData,   setAnnData]   = useState({ channelId: '', title: '', message: '', pingEveryone: false, type: 'annonce' as string });
   const [embedData, setEmbedData] = useState({ channelId: '', title: '', description: '', color: '#00F0FF' });
   const [dmData,    setDmData]    = useState({ userId: '', message: '' });
+
+  const varProps = { channels: channels ?? [], roles: roles ?? [] };
 
   const handleSay = (e: React.FormEvent) => {
     e.preventDefault();
@@ -706,16 +716,20 @@ function MessagingTab({ guildId }: { guildId: string }) {
       <div className="space-y-8">
         {/* Message simple */}
         <CyberCard>
-          <h2 className="text-lg font-bold text-primary mb-5">Envoyer un message</h2>
+          <h2 className="text-lg font-bold text-primary mb-5">💬 Envoyer un message</h2>
           <form onSubmit={handleSay} className="space-y-3">
             <ChannelSelect value={sayData.channelId} onChange={e => setSayData({ ...sayData, channelId: e.target.value })} />
-            <textarea 
-              className="w-full h-24 bg-background border border-primary/30 px-4 py-3 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary rounded resize-none"
-              placeholder="Votre message…"
-              value={sayData.message}
-              onChange={e => setSayData({ ...sayData, message: e.target.value })}
-              required
-            />
+            <div>
+              <textarea 
+                ref={sayRef}
+                className="w-full h-24 bg-background border border-primary/30 px-4 py-3 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary cyber-clip resize-none"
+                placeholder="Votre message… (Markdown supporté)"
+                value={sayData.message}
+                onChange={e => setSayData({ ...sayData, message: e.target.value })}
+                required
+              />
+              <VariablePicker {...varProps} onInsert={v => insertAtCursor(sayRef as any, v, sayData.message, m => setSayData(p => ({ ...p, message: m })))} />
+            </div>
             <CyberButton type="submit" isLoading={sayPending} className="w-full">Envoyer</CyberButton>
           </form>
         </CyberCard>
@@ -755,13 +769,17 @@ function MessagingTab({ guildId }: { guildId: string }) {
           <form onSubmit={handleAnnounce} className="space-y-3">
             <ChannelSelect value={annData.channelId} onChange={e => setAnnData({ ...annData, channelId: e.target.value })} />
             <CyberInput placeholder="Titre de l'annonce" value={annData.title} onChange={e => setAnnData({ ...annData, title: e.target.value })} required />
-            <textarea 
-              className="w-full h-24 bg-background border border-primary/30 px-4 py-3 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary cyber-clip resize-none"
-              placeholder="Contenu de l'annonce…"
-              value={annData.message}
-              onChange={e => setAnnData({ ...annData, message: e.target.value })}
-              required
-            />
+            <div>
+              <textarea 
+                ref={annRef}
+                className="w-full h-24 bg-background border border-primary/30 px-4 py-3 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary cyber-clip resize-none"
+                placeholder="Contenu de l'annonce…"
+                value={annData.message}
+                onChange={e => setAnnData({ ...annData, message: e.target.value })}
+                required
+              />
+              <VariablePicker {...varProps} onInsert={v => insertAtCursor(annRef as any, v, annData.message, m => setAnnData(p => ({ ...p, message: m })))} />
+            </div>
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <input type="checkbox" className="w-4 h-4 accent-primary" checked={annData.pingEveryone} onChange={e => setAnnData({ ...annData, pingEveryone: e.target.checked })} />
               <span className="font-body text-sm">Mentionner @everyone</span>
@@ -785,13 +803,17 @@ function MessagingTab({ guildId }: { guildId: string }) {
                 {members?.map(m => <option key={m.id} value={m.id}>{m.displayName} ({m.username})</option>)}
               </CyberSelect>
             </div>
-            <textarea 
-              className="w-full h-24 bg-background border border-primary/30 px-4 py-3 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary rounded resize-none"
-              placeholder="Message à envoyer en privé…"
-              value={dmData.message}
-              onChange={e => setDmData({ ...dmData, message: e.target.value })}
-              required
-            />
+            <div>
+              <textarea 
+                ref={dmRef}
+                className="w-full h-24 bg-background border border-primary/30 px-4 py-3 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary cyber-clip resize-none"
+                placeholder="Message à envoyer en privé…"
+                value={dmData.message}
+                onChange={e => setDmData({ ...dmData, message: e.target.value })}
+                required
+              />
+              <VariablePicker {...varProps} onInsert={v => insertAtCursor(dmRef as any, v, dmData.message, m => setDmData(p => ({ ...p, message: m })))} />
+            </div>
             <p className="text-xs text-muted-foreground">Le membre recevra un embed officiel au nom du serveur.</p>
             <CyberButton type="submit" isLoading={dmPending} className="w-full" style={{ borderColor: '#a78bfa', color: '#a78bfa' }}>Envoyer le MP</CyberButton>
           </form>
@@ -809,13 +831,17 @@ function MessagingTab({ guildId }: { guildId: string }) {
             <CyberInput placeholder="#00F0FF" value={embedData.color} onChange={e => setEmbedData({ ...embedData, color: e.target.value })} />
             <input type="color" className="w-11 h-11 bg-transparent border border-primary/30 cursor-pointer rounded" value={embedData.color} onChange={e => setEmbedData({ ...embedData, color: e.target.value })} />
           </div>
-          <textarea 
-            className="w-full h-48 bg-background border border-primary/30 px-4 py-3 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary rounded resize-none"
-            placeholder="Description (Markdown supporté)…"
-            value={embedData.description}
-            onChange={e => setEmbedData({ ...embedData, description: e.target.value })}
-            required
-          />
+          <div>
+            <textarea 
+              ref={embedRef}
+              className="w-full h-48 bg-background border border-primary/30 px-4 py-3 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary cyber-clip resize-none"
+              placeholder="Description (Markdown supporté)…"
+              value={embedData.description}
+              onChange={e => setEmbedData({ ...embedData, description: e.target.value })}
+              required
+            />
+            <VariablePicker {...varProps} onInsert={v => insertAtCursor(embedRef as any, v, embedData.description, d => setEmbedData(p => ({ ...p, description: d })))} />
+          </div>
           <CyberButton type="submit" isLoading={embedPending} className="w-full">Envoyer l'embed</CyberButton>
         </form>
       </CyberCard>
@@ -909,6 +935,8 @@ function GiveawaysTab({ guildId }: { guildId: string }) {
 }
 
 /* ─────────────────── Questionnaires ─────────────────── */
+interface SurveyQuestion { text: string; type: 'text' | 'image'; }
+
 function SurveysTab({ guildId }: { guildId: string }) {
   const { data: surveys } = useGetSurveys(guildId);
   const { data: channels } = useGetGuildChannels(guildId);
@@ -916,16 +944,28 @@ function SurveysTab({ guildId }: { guildId: string }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const [form, setForm] = useState({ channelId: '', title: '', questions: '' });
+  const [channelId, setChannelId] = useState('');
+  const [title, setTitle] = useState('');
+  const [questions, setQuestions] = useState<SurveyQuestion[]>([]);
+  const [newQ, setNewQ] = useState({ text: '', type: 'text' as 'text' | 'image' });
+
+  const addQuestion = () => {
+    if (!newQ.text.trim()) return;
+    setQuestions(prev => [...prev, { ...newQ }]);
+    setNewQ({ text: '', type: 'text' });
+  };
+
+  const removeQuestion = (i: number) => setQuestions(prev => prev.filter((_, idx) => idx !== i));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.channelId || !form.title || !form.questions) return;
-    createSurvey({ guildId, data: { ...form, questions: form.questions.split('|').map(q => q.trim()).filter(Boolean) } }, {
+    const validQs = questions.filter(q => q.text.trim());
+    if (!channelId || !title || validQs.length === 0) return;
+    createSurvey({ guildId, data: { channelId, title, questions: validQs.map(q => q.text) } }, {
       onSuccess: () => {
         toast({ title: 'Questionnaire lancé !' });
         queryClient.invalidateQueries({ queryKey: [`/api/guilds/${guildId}/surveys`] });
-        setForm(p => ({ ...p, title: '', questions: '' }));
+        setTitle(''); setChannelId(''); setQuestions([{ text: '', type: 'text' }]);
       }
     });
   };
@@ -933,30 +973,75 @@ function SurveysTab({ guildId }: { guildId: string }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <CyberCard className="lg:col-span-1 h-fit">
-        <h2 className="text-lg font-bold text-primary mb-5">Nouveau questionnaire</h2>
+        <h2 className="text-lg font-bold text-primary mb-5 flex items-center gap-2">
+          <CheckSquare className="w-5 h-5" /> Nouveau questionnaire
+        </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <CyberSelect value={form.channelId} onChange={e => setForm({ ...form, channelId: e.target.value })} required>
+          <CyberSelect value={channelId} onChange={e => setChannelId(e.target.value)} required>
             <option value="">— Choisir un salon —</option>
             {channels?.map(c => <option key={c.id} value={c.id}>#{c.name}</option>)}
           </CyberSelect>
-          <CyberInput placeholder="Titre du questionnaire" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required />
+          <CyberInput placeholder="Titre du questionnaire" value={title} onChange={e => setTitle(e.target.value)} required />
+
+          {/* Questions builder */}
           <div>
-            <label className="block text-xs font-body text-muted-foreground mb-1">Questions (séparées par |)</label>
-            <textarea 
-              className="w-full h-32 bg-background border border-primary/30 px-4 py-3 font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary rounded resize-none"
-              placeholder="Quel est ton pseudo ? | Quel âge as-tu ? | Pourquoi rejoindre ?"
-              value={form.questions}
-              onChange={e => setForm({ ...form, questions: e.target.value })}
-              required
-            />
+            <p className="text-[10px] font-display text-muted-foreground tracking-widest uppercase mb-2">
+              Questions ({questions.filter(q => q.text.trim()).length})
+            </p>
+            <div className="space-y-2 mb-3">
+              {questions.map((q, i) => (
+                <div key={i} className="flex items-center gap-2 bg-background/60 border border-primary/20 px-3 py-2 cyber-clip-sm">
+                  <span className={`flex-shrink-0 text-xs ${q.type === 'image' ? 'text-pink-400' : 'text-sky-400'}`}>
+                    {q.type === 'image' ? <ImageIcon className="w-3.5 h-3.5" /> : <Type className="w-3.5 h-3.5" />}
+                  </span>
+                  <span className="flex-1 text-xs font-body text-foreground truncate">{q.text}</span>
+                  <button type="button" onClick={() => removeQuestion(i)} className="text-destructive/60 hover:text-destructive transition-colors flex-shrink-0">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Add new question */}
+            <div className="border border-primary/20 bg-primary/5 p-3 space-y-2">
+              <p className="text-[9px] font-display text-primary/60 tracking-widest uppercase">Ajouter une question</p>
+              <CyberInput
+                placeholder="Texte de la question…"
+                value={newQ.text}
+                onChange={e => setNewQ(p => ({ ...p, text: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addQuestion(); } }}
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNewQ(p => ({ ...p, type: 'text' }))}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-display tracking-wider border cyber-clip-sm transition-all ${newQ.type === 'text' ? 'text-sky-400 border-sky-400/60 bg-sky-400/10' : 'text-muted-foreground border-muted-foreground/20 hover:border-muted-foreground/40'}`}
+                >
+                  <Type className="w-3 h-3" /> Texte
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewQ(p => ({ ...p, type: 'image' }))}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-display tracking-wider border cyber-clip-sm transition-all ${newQ.type === 'image' ? 'text-pink-400 border-pink-400/60 bg-pink-400/10' : 'text-muted-foreground border-muted-foreground/20 hover:border-muted-foreground/40'}`}
+                >
+                  <ImageIcon className="w-3 h-3" /> Image
+                </button>
+                <CyberButton type="button" size="sm" variant="secondary" onClick={addQuestion} className="ml-auto">
+                  <Plus className="w-3.5 h-3.5" />
+                </CyberButton>
+              </div>
+            </div>
           </div>
-          <CyberButton type="submit" isLoading={createPending} className="w-full">Lancer le questionnaire</CyberButton>
+
+          <CyberButton type="submit" isLoading={createPending} className="w-full" disabled={questions.filter(q => q.text.trim()).length === 0}>
+            Lancer le questionnaire
+          </CyberButton>
         </form>
       </CyberCard>
 
       <div className="lg:col-span-2 space-y-4">
         <h2 className="text-lg font-bold text-foreground">Questionnaires actifs & passés</h2>
-        <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
+        <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1 scrollbar-none">
           {surveys?.map(s => (
             <CyberCard key={s.id} className="p-4" noClip>
               <div className="flex justify-between items-start mb-4">
@@ -964,18 +1049,28 @@ function SurveysTab({ guildId }: { guildId: string }) {
                   <h3 className="font-semibold text-base text-primary">{s.title}</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">Créé le {format(new Date(s.createdAt), 'd MMM yyyy', { locale: fr })}</p>
                 </div>
-                <CyberBadge variant={s.active ? 'primary' : 'outline'}>{s.active ? 'ACTIF' : 'FERMÉ'}</CyberBadge>
+                <CyberBadge variant={s.active ? 'primary' : 'outline'} dot={s.active}>{s.active ? 'ACTIF' : 'FERMÉ'}</CyberBadge>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-background/50 border border-primary/10 p-3 rounded text-center">
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="bg-background/50 border border-primary/10 p-3 cyber-clip-sm text-center">
                   <span className="block text-[11px] font-display text-muted-foreground uppercase tracking-wider">Questions</span>
                   <span className="font-bold text-lg text-foreground">{s.questions.length}</span>
                 </div>
-                <div className="bg-background/50 border border-primary/10 p-3 rounded text-center">
+                <div className="bg-background/50 border border-primary/10 p-3 cyber-clip-sm text-center">
                   <span className="block text-[11px] font-display text-muted-foreground uppercase tracking-wider">Réponses</span>
                   <span className="font-bold text-lg text-primary">{s.responseCount}</span>
                 </div>
               </div>
+              {s.questions.length > 0 && (
+                <div className="space-y-1">
+                  {s.questions.map((q: string, i: number) => (
+                    <div key={i} className="flex items-start gap-2 text-xs font-body text-muted-foreground">
+                      <span className="text-primary/50 font-display text-[9px] mt-0.5">{String(i + 1).padStart(2, '0')}.</span>
+                      <span>{q}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CyberCard>
           ))}
           {surveys?.length === 0 && <p className="text-muted-foreground italic text-sm">Aucun questionnaire actif.</p>}
@@ -1203,21 +1298,22 @@ function LogsTab({ guildId }: { guildId: string }) {
   const [filter, setFilter] = useState('');
   const [search, setSearch] = useState('');
 
-  const actionTypes = useMemo(() => {
+  const actionTypes = useMemo((): string[] => {
     if (!logs) return [];
-    return [...new Set(logs.map(l => l.action))].sort();
+    return [...new Set((logs as any[]).map((l: any) => String(l.action ?? '')))].filter(Boolean).sort();
   }, [logs]);
 
   const filtered = useMemo(() => {
     if (!logs) return [];
     return logs.filter(l => {
-      const matchAction = !filter || l.action === filter;
+      const action = String(l.action ?? '');
+      const matchAction = !filter || action === filter;
       const q = search.toLowerCase();
       const matchSearch = !q ||
-        l.action.toLowerCase().includes(q) ||
-        (l.targetName ?? '').toLowerCase().includes(q) ||
-        (l.moderatorName ?? '').toLowerCase().includes(q) ||
-        (l.details ?? '').toLowerCase().includes(q);
+        action.toLowerCase().includes(q) ||
+        String(l.targetName ?? '').toLowerCase().includes(q) ||
+        String(l.moderatorName ?? '').toLowerCase().includes(q) ||
+        String(l.details ?? '').toLowerCase().includes(q);
       return matchAction && matchSearch;
     });
   }, [logs, filter, search]);
@@ -1268,10 +1364,16 @@ function LogsTab({ guildId }: { guildId: string }) {
             {logs?.length === 0 ? '── AUCUN ÉVÉNEMENT ENREGISTRÉ ──' : '── AUCUN RÉSULTAT ──'}
           </div>
         ) : filtered.map((log, i) => {
-          const meta = getLogMeta(log.action);
+          const action      = String((log as any).action      ?? '');
+          const targetName  = String((log as any).targetName  ?? '');
+          const modName     = String((log as any).moderatorName ?? '');
+          const details     = String((log as any).details     ?? '');
+          const createdAt   = String((log as any).createdAt   ?? '');
+          const id          = String((log as any).id          ?? i);
+          const meta = getLogMeta(action);
           return (
             <motion.div
-              key={log.id}
+              key={id}
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: Math.min(i * 0.015, 0.3), duration: 0.2 }}
@@ -1280,20 +1382,20 @@ function LogsTab({ guildId }: { guildId: string }) {
               <span className="text-base flex-shrink-0 leading-none mt-0.5">{meta.icon}</span>
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-0.5">
-                  <CyberBadge variant={meta.variant as any} className="text-[9px]">{log.action}</CyberBadge>
-                  {log.targetName && (
-                    <span className="text-xs font-semibold text-foreground">{log.targetName}</span>
+                  <CyberBadge variant={meta.variant as any} className="text-[9px]">{action}</CyberBadge>
+                  {targetName && (
+                    <span className="text-xs font-semibold text-foreground">{targetName}</span>
                   )}
-                  {log.moderatorName && (
-                    <span className="text-[10px] text-primary/70 font-display">par {log.moderatorName}</span>
+                  {modName && (
+                    <span className="text-[10px] text-primary/70 font-display">par {modName}</span>
                   )}
                 </div>
-                {log.details && (
-                  <p className="text-xs text-muted-foreground/80 font-body truncate mt-0.5" title={log.details}>{log.details}</p>
+                {details && (
+                  <p className="text-xs text-muted-foreground/80 font-body truncate mt-0.5" title={details}>{details}</p>
                 )}
               </div>
               <span className="text-[10px] font-display text-muted-foreground/50 whitespace-nowrap flex-shrink-0 tabular-nums">
-                {format(new Date(log.createdAt), 'dd/MM HH:mm:ss')}
+                {createdAt ? format(new Date(createdAt), 'dd/MM HH:mm:ss') : '—'}
               </span>
             </motion.div>
           );
